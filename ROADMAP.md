@@ -7,11 +7,18 @@ issue to argue for something.
 
 ## Done
 
+- **Shadow DOM** (unreleased, after `0.4.0-alpha`). Motion inside open, closed, nested and
+  declarative shadow roots is recorded, waited for and replayed; elements there are identified
+  through their host (`test-id:plan-pro >> motionpr-id:glow`) with selectors in Playwright's
+  chaining syntax that re-find re-rendered elements; scroll containers inside roots are recorded;
+  `scroll` and `scrollTo` steps find their elements with Playwright like every other step.
+  Declarative closed roots and iframes are not observed. See
+  [Shadow DOM](docs/integrations/shadow-dom.md).
 - **Nested native scroll containers** (`0.4.0-alpha`). The scroll motion of overflow
   containers is recorded from where they rested, compared and waited for like the document's,
   whether a step or the page scrolls them; `wheel` steps take a `selector` to scroll the
-  container under it (`scrollTo` already had one). Containers in shadow roots and iframes are not
-  recorded yet. See [Scenarios](docs/configuration/scenarios.md#scroll-motion).
+  container under it (`scrollTo` already had one). Containers in iframes are not recorded yet.
+  See [Scenarios](docs/configuration/scenarios.md#scroll-motion).
 - **Stable ScrollTrigger positions under native smooth scrolling** (`0.4.0-alpha`). Where a
   ScrollTrigger animation runs in the scroll is compared from the `start`/`end` positions
   ScrollTrigger resolved, and its `scrub` and `toggleActions` as scroll settings, instead of
@@ -33,9 +40,7 @@ issue to argue for something.
 
 1. **Example projects.** Small, runnable projects (plain HTML, React with GSAP, Astro with Lenis)
    with their scenarios and committed baselines, tested in CI like the demo app.
-2. **Shadow DOM.** Selectors that pierce shadow roots for replay, with browser tests, and scroll
-   containers inside shadow roots.
-3. **Adapter protocol 2.** Freeze the adapter contract for custom engines before `1.0`, with a
+2. **Adapter protocol 2.** Freeze the adapter contract for custom engines before `1.0`, with a
    conformance suite adapters can run.
 
 ## Later

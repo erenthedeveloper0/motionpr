@@ -5,6 +5,105 @@ workspace packages it bundles are versioned with it. Format:
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). MotionPR is an alpha: until `1.0`, any
 prerelease may change the capture format or the API, and every such change is listed here.
 
+## [Unreleased]
+
+Motion inside shadow roots is recorded, identified through each component's host and compared
+like the rest of the page, in open, closed, nested and declarative roots (roadmap: Shadow DOM).
+`scroll` and `scrollTo` steps now find their elements with Playwright, like every other step, so
+their selectors reach into shadow roots too. Capture schema and comparison schema stay at version
+2, and the adapter protocol at 1: the new fields are optional or have defaults, so 0.4 captures
+and custom adapters work unchanged.
+
+### Added
+
+- **Shadow roots.** The agent wraps `attachShadow` before page scripts run (open and closed
+  roots), finds declarative open roots (`<template shadowrootmode="open">`) once the document is
+  parsed, when a window opens and before each interaction, and asks each root directly for what
+  does not leave it: its animations (`document.getAnimations()` leaves shadow trees out) and its
+  `scroll`, `transitionrun`, `transitionstart` and `animationstart` events. CSS transitions, CSS
+  animations and Web Animations inside components are recorded, waited for before checkpoints,
+  frozen and replayed deterministically, and their non-lazy images are waited for after
+  navigation.
+- **Identity through the host.** An element inside a shadow root is identified within that root
+  (an `id` or a label only has to be unique there; a path starts at the nearest identified
+  ancestor in the root or at its top, `#shadow-root`) and prefixed with its host's identity:
+  `test-id:plan-pro >> motionpr-id:glow`, selector
+  `[data-testid="plan-pro"] >> [data-motionpr-id="glow"]` (Playwright's chaining operator;
+  `:scope` stands for the host). It is as reliable as the less reliable of the two. Records carry
+  the host's key as `element.shadowHost`. An element that a component re-renders while it
+  animates is found again through its selector and replayed.
+- **Scroll containers inside shadow roots** are recorded like any other
+  (`native:test-id:inbox >> test-id:list:vertical`), whether a `scrollTo` or `wheel` step or the
+  page scrolls them.
+- **Staggers across components.** The same element of numbered components
+  (`test-id:plan-1 >> …`, `test-id:plan-2 >> …`) is one stagger family:
+  _Stagger interval 60ms → 120ms across 3 elements_.
+- Findings name the hosts, then the element:
+  _css-transition “opacity” on plan-pro >> glow: Duration 300ms → 450ms (+150ms, +50%)_.
+- `settings.shadowRoots` in captures (`false` when read from older ones) and the optional
+  `ElementIdentity.shadowHost`.
+- A documentation page, [Shadow DOM and Web Components](docs/integrations/shadow-dom.md).
+- Browser tests in Chromium, Firefox and WebKit (open, closed, nested and declarative roots,
+  selectors Playwright resolves, a replaced element, an image added after load,
+  `ignore.selectors` on a host, containers
+  under `scrollTo`, `wheel` and the page, step selectors, two runs of one build, a changed
+  duration and stagger, an old baseline), a GSAP and an Anime.js test with targets inside shadow
+  roots, and unit tests for the comparison, the schema and selector parsing.
+
+### Changed
+
+- **`scroll` and `scrollTo` steps find their elements with Playwright**, like `click` and `hover`:
+  their selectors reach into open shadow roots and may use Playwright's engines (`text=…`,
+  `role=…`, `>>`). They take the first match, as before, and wait up to `capture.actionTimeout`
+  for it to be attached instead of failing at once:
+  _No element matches [data-testid=missing] (waited 10000 ms)._ The elements are found before
+  the step's trigger time, so latency is measured as before.
+- `ignore.selectors` also match the hosts of the shadow roots an element is in, and their
+  ancestors: ignoring a component's host ignores everything inside it, also while MotionPR waits
+  for motion to settle.
+- Against a capture made before MotionPR looked inside shadow roots (`settings.shadowRoots`
+  `false`), records inside shadow roots are first paired with its records by their key within
+  the root, as fuzzy matches whose changes are all `uncertain` (that capture also replayed them
+  without freezing the rest of the component). Animations and scroll containers it could not
+  see, and its records that may be those under their old key, are `uncertain` instead of a
+  `warning` (`animation-added`, `scroll-added`) or `critical` (`animation-removed`,
+  `scroll-removed`): _… The baseline was captured before MotionPR looked inside shadow roots
+  (MotionPR 0.4.0-alpha or earlier), so this is uncertain; capture it again to compare this
+  animation._ A severity set for the rule still applies. A ScrollTrigger scroller inside a shadow
+  root counts as the same scroller when only its host is missing from the old key.
+
+### Fixed
+
+- CSS transitions and CSS animations inside shadow roots were not recorded, and checkpoints did
+  not wait for them: `document.getAnimations()` leaves shadow trees out, and `transitionrun` and
+  `animationstart` do not leave the root. The documentation said they were discovered.
+- Web Animations inside shadow roots were recorded without their host: the instances of a
+  component shared one key (told apart by `#2`, `#3` in start order), a path from the top of a
+  root read as `path:body>…`, and their selectors did not find the element, so one that was
+  re-rendered was not replayed. While MotionPR replayed a window, other animations inside shadow
+  roots kept running.
+- `scroll` and `scrollTo` steps could not reach elements inside shadow roots, and failed on the
+  Playwright selector syntax that the documentation allowed for every step (`text=…`).
+
+### Upgrading
+
+Baselines accepted with `0.4.0-alpha` or earlier did not look inside shadow roots. In checkpoints
+with motion inside web components, comparisons against them report `uncertain` added and removed
+records, and `uncertain` changes on the records paired by key, until a new baseline is accepted
+(`npx motionpr baseline accept`). Keys of elements outside shadow roots are unchanged, and
+nothing changes for pages without shadow roots. A `scroll` or `scrollTo` step whose selector
+matches nothing now fails after `capture.actionTimeout` (10 s by default) instead of at once.
+
+### Known limitations
+
+- Declarative closed shadow roots, the browser's own shadow trees (form controls, media) and
+  iframes are not observed.
+- Steps and screenshot masks do not reach into closed shadow roots (Playwright does not pierce
+  them): an input inside a closed root is not masked; mask its host instead.
+- Elements slotted into a component are identified in the page's DOM, not through the host.
+- While capturing, the agent polls every shadow root once per frame: 1,000 roots took 0.3 ms per
+  frame in Firefox, 0.6 ms in Chromium and 1 ms in WebKit.
+
 ## [0.4.0-alpha] — 2026-11-20
 
 Where a GSAP ScrollTrigger animation runs in the scroll is compared from the `start` and `end`
@@ -378,6 +477,7 @@ published or tagged, so this release collects their work and the version starts 
 - Filled values are never written to captures or reports; inputs are masked in screenshots; query
   values in recorded URLs are redacted by default. MotionPR sends no telemetry.
 
+[Unreleased]: https://github.com/erenthedeveloper0/motionpr/compare/v0.4.0-alpha...main
 [0.4.0-alpha]: https://github.com/erenthedeveloper0/motionpr/releases/tag/v0.4.0-alpha
 [0.3.0-alpha]: https://github.com/erenthedeveloper0/motionpr/releases/tag/v0.3.0-alpha
 [0.2.0-alpha]: https://github.com/erenthedeveloper0/motionpr/releases/tag/v0.2.0-alpha

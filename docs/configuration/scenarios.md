@@ -101,8 +101,13 @@ page-load animations. Each of these produces a diagnostic instead of silently co
 
 ## Selectors
 
-Selectors are Playwright selectors (CSS, `text=…`, `role=…`) and must match **exactly one**
-element. An empty selector is a config error.
+Selectors are Playwright selectors (CSS, `text=…`, `role=…`, parts chained with `>>`) in every
+step, and Playwright's CSS reaches into open shadow roots
+([Shadow DOM](../integrations/shadow-dom.md#steps)). Steps that act on an element must match
+**exactly one**. `scroll` and `scrollTo` take the first match; since the unreleased version
+after `0.4.0-alpha` Playwright finds it too (before, `document.querySelector` did, which stops at
+shadow roots), and they wait up to `capture.actionTimeout` for it to be attached. An empty
+selector is a config error.
 
 ## Helpers
 

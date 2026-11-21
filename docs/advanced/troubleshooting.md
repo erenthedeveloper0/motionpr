@@ -144,12 +144,23 @@ npx motionpr report --regenerate
 
 ## Known capture limitations
 
-- **Shadow DOM:** animations inside shadow roots are discovered (`document.getAnimations()`
-  includes them), but element selectors do not pierce shadow roots, so a replaced shadow element
-  cannot be re-found for replay. Not covered by tests yet; give such elements a
-  `data-motionpr-id` on a stable host where possible.
-- **Scroll containers** (since `0.4.0-alpha`): containers inside shadow roots or
-  iframes are not recorded as scroll motion (their animations still are).
+- **Motion inside a web component is missing** (unreleased, after `0.4.0-alpha`): shadow roots
+  attached by script (open or closed), declarative open roots and nested roots are observed. A
+  declarative closed root (`<template shadowrootmode="closed">`) is invisible to scripts, and so
+  to MotionPR ([Shadow DOM](../integrations/shadow-dom.md#which-shadow-roots)). With
+  `0.4.0-alpha` or earlier, CSS motion inside any shadow root was not recorded.
+- **Every element inside a component is matched by DOM position**: its host has no identity.
+  Elements in a shadow root are identified through their host
+  (`test-id:plan-pro >> motionpr-id:glow`), so give the host a `data-testid` or
+  `data-motionpr-id`.
+- **`No element matches … (waited … ms)`** in a `scroll` or `scrollTo` step: no element matched
+  the Playwright selector within `capture.actionTimeout`. Steps reach into open shadow roots, not
+  closed ones.
+- **Uncertain added and removed animations inside components after upgrading** from
+  `0.4.0-alpha`: the baseline was captured before MotionPR looked inside shadow roots. Accept a
+  new baseline once ([Shadow DOM](../integrations/shadow-dom.md#upgrading-from-040-alpha)).
+- **Scroll containers** (since `0.4.0-alpha`): containers inside iframes are not recorded as
+  scroll motion. Inside shadow roots they are since the unreleased version after `0.4.0-alpha`.
 - **`wheel: … is outside the viewport`**: a `wheel` step with `selector` points at an element that
   is not on screen. Add a `scrollIntoView` step for it first; MotionPR does not scroll on its own.
 - **`wheel: … is covered by …`**: another element (an overlay, a sticky header) sits over the

@@ -44,7 +44,11 @@ unless `allowCrossBrowser` is set, in which case `ENGINE_DEPENDENT_CHANGES` are 
 1. **Agent.** Before any page script runs, Playwright injects MotionPR's agent
    (`window.__MOTIONPR_AGENT__`). It discovers native animations (CSS transitions, CSS
    animations, Web Animations) by polling `document.getAnimations()` every frame and patching
-   `Element.prototype.animate`, and records interaction triggers.
+   `Element.prototype.animate`, and records interaction triggers. Shadow roots keep their
+   animations and non-composed events (`scroll`, `transitionrun`, `animationstart`) to
+   themselves, so the agent wraps `attachShadow`, finds declarative open roots when it scans the
+   page, and polls and listens to each root directly (`packages/capture/src/agent/shadow.ts`,
+   unreleased, after `0.4.0-alpha`). Elements in a root are identified through its host.
 2. **Adapters** for JavaScript engines (GSAP, Anime.js, Lenis, custom) register with the agent
    from inside the app. They implement one contract (`MotionprAdapter` in
    `@motionpr/core/protocol`): `collect()` animations, and optionally `collectTimelines()`,

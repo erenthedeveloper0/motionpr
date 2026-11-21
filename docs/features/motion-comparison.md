@@ -39,8 +39,10 @@ compared and the comparison says so (`SAMPLE_COUNT_DIFFERS`).
 
 Siblings that animate the same way form a **stagger family**: the same type, name and properties,
 and element keys that differ only by a trailing number (`test-id:work-card-1`, `-2`, …), or one
-GSAP/Anime.js tween with several targets. MotionPR measures the median interval between their
-start times and compares it.
+GSAP/Anime.js tween with several targets. Inside shadow roots, the same element of numbered
+components (`test-id:plan-1 >> motionpr-id:glow`, `plan-2`, …) is one family (unreleased, after
+`0.4.0-alpha`; [Shadow DOM](../integrations/shadow-dom.md#staggers)). MotionPR measures the
+median interval between their start times and compares it.
 
 <!-- motionpr:stagger dataset="work-grid/revealed" -->
 

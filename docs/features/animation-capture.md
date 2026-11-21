@@ -15,7 +15,9 @@ under test, in four phases per checkpoint: **discover**, **settle**, **replay**,
 Before any of your scripts run, MotionPR injects its agent (`window.__MOTIONPR_AGENT__`). It
 finds native animations by polling `document.getAnimations()` every frame and by wrapping
 `Element.prototype.animate`, so short-lived animations are seen even if they finish between two
-frames.
+frames. `document.getAnimations()` leaves shadow roots out, so the agent also polls every shadow
+root it knows: roots attached by script (open or closed; it wraps `attachShadow`) and declarative
+open roots (unreleased, after `0.4.0-alpha`; [Shadow DOM](../integrations/shadow-dom.md)).
 
 | Found natively                     | Record type      | Engine label                                  |
 | ---------------------------------- | ---------------- | --------------------------------------------- |
@@ -81,6 +83,8 @@ closes on the next click.
   are sampled only within the progress the page showed, and repeating ones not at all
   ([GSAP: ScrollTrigger](../integrations/gsap.md#scrolltrigger)).
 - Scroll itself is never replayed; it is recorded live. See [Lenis](../integrations/lenis.md).
+- Declarative closed shadow roots, the browser's own shadow trees and iframes
+  ([Shadow DOM](../integrations/shadow-dom.md#which-shadow-roots)).
 
 The full list is in [Limitations](../advanced/limitations.md). The internals are described in
 [Architecture](../advanced/architecture.md).

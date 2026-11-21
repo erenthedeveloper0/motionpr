@@ -15,10 +15,11 @@ description: Browsers, runtimes, engines and platforms MotionPR is tested with, 
 | Native CSS transitions / animations | Verified in all three engines                      | Capture engine and engine edge-case tests, demo app                                                               |
 | Web Animations API                  | Verified in all three engines                      | Reversed, cancelled, finished, delayed, keyframed, reused                                                         |
 | CSS scroll-driven animations        | Metadata only                                      | Progress follows scroll                                                                                           |
-| GSAP                                | Verified with 3.15.1 (range `>=3.12 <4`)           | 23 browser tests per engine; ScrollTrigger: live progress, values sampled where the scroll went, positions        |
-| Anime.js                            | Verified with 4.5.0 (range `>=4 <5`)               | 22 browser tests per engine, unit tests; v3 is not supported                                                      |
+| GSAP                                | Verified with 3.15.1 (range `>=3.12 <4`)           | 24 browser tests per engine; ScrollTrigger: live progress, values sampled where the scroll went, positions        |
+| Anime.js                            | Verified with 4.5.0 (range `>=4 <5`)               | 23 browser tests per engine, unit tests; v3 is not supported                                                      |
 | Lenis                               | Verified with 1.3.27 (range `>=1.1 <2`)            | 16 browser tests per engine; scroll motion, never replayed                                                        |
 | Native scroll containers            | Verified in all three engines                      | 12 browser tests per engine: steps, page-driven scrolls, settling, comparison                                     |
+| Shadow DOM (unreleased)             | Verified in all three engines                      | 12 browser tests per engine: open, closed, nested and declarative roots, containers, steps, ignore, comparison    |
 | macOS                               | Verified (arm64), all three engines                | Development machine                                                                                               |
 | Linux                               | Covered by the repository's CI, all three engines  | `ubuntu-latest`, one job per engine                                                                               |
 | Windows                             | Covered by the repository's CI, Chromium           | `windows-latest`: unit tests, Chromium browser suites, demo app, packaged CLI. Firefox and WebKit are not covered |
@@ -32,10 +33,11 @@ CI runs Chromium in the main job, Firefox and WebKit in a matrix, and Chromium a
 | -------------------------------------------------------------------------------------- | -------: | ------: | -----: |
 | Capture engine                                                                         |       14 |      14 |     14 |
 | Engine edge cases (transitions, animations, WAAPI, latency, scroll start, determinism) |       15 |      15 |     15 |
-| GSAP adapter (incl. ScrollTrigger values and positions)                                |       23 |      23 |     23 |
-| Anime.js adapter                                                                       |       22 |      22 |     22 |
+| GSAP adapter (incl. ScrollTrigger values and positions)                                |       24 |      24 |     24 |
+| Anime.js adapter                                                                       |       23 |      23 |     23 |
 | Lenis adapter                                                                          |       16 |      16 |     16 |
 | Native scroll containers                                                               |       12 |      12 |     12 |
+| Shadow DOM (unreleased, after `0.4.0-alpha`)                                           |       12 |      12 |     12 |
 | CLI end to end                                                                         |       15 |      12 |     12 |
 | Demo app: every intended change, nothing else (e2e)                                    |       15 |      15 |     15 |
 

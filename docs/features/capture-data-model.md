@@ -139,6 +139,7 @@ One element animated over time. This is the record of the menu from
 | `progressTrace`            | Live progress of scroll-linked animations (GSAP ScrollTrigger), window-relative                      |
 | `samples[].scrollProgress` | Scroll-linked animations only (since `0.3.0-alpha`): the progress the sample was rendered at         |
 | `scrollLink`               | Scroll-linked animations (since `0.4.0-alpha`): where they run in the scroll, see below              |
+| `element.shadowHost`       | Elements inside a shadow root (unreleased, after `0.4.0-alpha`): the host's key, which starts `key`  |
 
 `scrollLink` is written for ScrollTrigger animations (and by custom adapters that report it) and
 is absent otherwise, including in captures taken with `0.3.0-alpha` or earlier:
@@ -184,7 +185,10 @@ change; when the scroller was still at the end of the window, the last sample sa
 container first seen while scrolling, because it was added or began to overflow after the window
 opened, is `partial`: its position before the first scroll event was not observed. The capture's
 `settings.scrollContainers` says whether containers were recorded (`false` in captures made
-before this, and with `capture.scrollContainers: false`).
+before this, and with `capture.scrollContainers: false`). Containers inside shadow roots are
+named after their element key (`native:test-id:inbox >> test-id:list:vertical`), and
+`settings.shadowRoots` says whether the capture looked inside shadow roots (unreleased, after
+`0.4.0-alpha`; `false` in older captures, see [Shadow DOM](../integrations/shadow-dom.md)).
 
 ## Correlations
 

@@ -126,6 +126,7 @@ For every tween **per target element**:
 | `gsap.context()`, `useGSAP()`                                     | ✅                                                                    |
 | `gsap.set()` / zero-duration tweens                               | ignored (not motion)                                                  |
 | Non-DOM targets (plain objects, canvas)                           | timing only, no samples                                               |
+| Targets inside shadow roots (passed as elements; unreleased)      | ✅ identified through their host ([Shadow DOM](shadow-dom.md))        |
 | ScrollTrigger (`scrollTrigger:` vars), `scrub` or `toggleActions` | ✅ values sampled where the scroll went ([below](#scrolltrigger))     |
 | ScrollTrigger on a repeating tween or timeline                    | ⚠️ timing and live progress only                                      |
 | Animations created before `register()`                            | ⚠️ picked up if still on the global timeline; otherwise use `track()` |

@@ -24,6 +24,11 @@ ignore: {
 },
 ```
 
+`ignore.selectors` are CSS selectors, matched against the animated element and its ancestors. For
+an element inside a shadow root, the hosts of the roots it is in and their ancestors count too
+(unreleased, after `0.4.0-alpha`): `"chat-widget"` ignores everything inside that component
+([Shadow DOM](../integrations/shadow-dom.md#ignoring-a-component)).
+
 Ignored motion is not recorded, so it cannot produce differences. Animations on elements matched
 by `ignore.selectors` are also left out when MotionPR waits for motion to settle, and so is the
 scroll motion of a matched scroll container (since `0.4.0-alpha`); ignored names

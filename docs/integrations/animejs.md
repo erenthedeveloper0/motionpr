@@ -158,6 +158,9 @@ observed, and which it had to infer.
 - Pause/resume, `seek`, `restart`, `reverse()` during the window (the latest continuous segment
   of observations is used).
 - `waapi.animate()`.
+- Targets inside the shadow roots of web components, passed as elements (a selector string is
+  looked up in the document): identified through their host
+  ([Shadow DOM](shadow-dom.md#identity); unreleased, after `0.4.0-alpha`).
 
 ## Limitations
 

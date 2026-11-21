@@ -19,6 +19,11 @@ variant on an M-series MacBook). Comparison and report generation take milliseco
 | Fewer, more focused scenarios (`--scenario`)           | Less coverage per run                                   |
 | `capture.waitForNetworkIdle: false` for apps that poll | No network-idle wait after navigation                   |
 
+The agent polls the document for animations once per frame, and every shadow root it knows
+(unreleased, after `0.4.0-alpha`): 1,000 shadow roots took 0.3 ms per frame in Firefox, 0.6 ms
+in Chromium and 1 ms in WebKit in MotionPR's measurements
+([Shadow DOM](../integrations/shadow-dom.md#cost)).
+
 ## How comparison scales
 
 `pnpm bench` in the repository measures comparison and report-model building on synthetic

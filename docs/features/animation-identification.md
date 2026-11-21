@@ -33,6 +33,17 @@ Every animated element gets an identity key, chosen in this order:
 The record id combines the element key, the animation type and its name:
 `motionpr-id:menu::css-transition::transform`. Duplicates get `#2`, `#3`.
 
+### Inside shadow roots
+
+Unreleased, after `0.4.0-alpha`. An element inside a shadow root is identified within that root by
+the same rules (an `id` or a label only has to be unique there), and its key starts with its
+host's key: `test-id:plan-pro >> motionpr-id:glow`, or
+`test-id:plan-pro >> path:#shadow-root>div:nth-of-type(2)` for a path from the top of the root.
+Each instance of a component therefore has its own keys, and an element is only as reliable as
+its host. The selector chains the host's selector and the element's with Playwright's `>>`
+operator, and `element.shadowHost` holds the host's key. See
+[Shadow DOM](../integrations/shadow-dom.md#identity).
+
 ## Matching
 
 Records are matched per checkpoint in three deterministic passes:
@@ -44,6 +55,9 @@ Records are matched per checkpoint in three deterministic passes:
 | **fuzzy**   | Same type, name and tag, the same accessible label or selector, and at least 50% property overlap        | always low                 |
 
 Anything left over is **added** (only in the candidate) or **removed** (only in the baseline).
+Against a capture made before MotionPR looked inside shadow roots (`0.4.0-alpha` or earlier),
+records inside shadow roots are first paired by their key within the root, and what stays
+unpaired there is `uncertain` ([Shadow DOM](../integrations/shadow-dom.md#upgrading-from-040-alpha)).
 An element pass records a note such as _Same element, renamed from "process@discover" to
 "process@design"_; the demo app's Anime.js timeline produces exactly that.
 
