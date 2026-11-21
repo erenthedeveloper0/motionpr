@@ -7,7 +7,13 @@ import {
   parseTransformMatrix,
   toKebabCase,
 } from "../src/values.ts";
-import { isLikelyGeneratedId, sanitizeLabel, animationKey, cssAttrValue } from "../src/identity.ts";
+import {
+  isLikelyGeneratedId,
+  keyInShadowRoot,
+  sanitizeLabel,
+  animationKey,
+  cssAttrValue,
+} from "../src/identity.ts";
 import { redactUrl, serializeJsonForHtml } from "../src/redact.ts";
 
 describe("transform decomposition", () => {
@@ -110,6 +116,16 @@ describe("identity helpers", () => {
     );
     expect(animationKey("id:x", "web-animation", null)).toBe("id:x::web-animation::anonymous");
     expect(cssAttrValue('a"b\\c')).toBe('a\\"b\\\\c');
+  });
+
+  it("reads the key of an element within its shadow root", () => {
+    expect(keyInShadowRoot({ key: "test-id:menu" })).toBe("test-id:menu");
+    expect(
+      keyInShadowRoot({
+        key: "test-id:outer >> test-id:inner >> motionpr-id:spark",
+        shadowHost: "test-id:outer >> test-id:inner",
+      }),
+    ).toBe("motionpr-id:spark");
   });
 });
 

@@ -20,11 +20,17 @@ export interface StaticServer {
   close(): Promise<void>;
 }
 
-/** Minimal static file server for tests (directory traversal safe). */
+/**
+ * Minimal static file server for tests (directory traversal safe). `?delay=<ms>` on any request
+ * holds the response that long (a slow image).
+ */
 export async function serveDirectory(root: string): Promise<StaticServer> {
   const base = resolve(root);
   const server: Server = createServer(async (req, res) => {
-    const pathname = decodeURIComponent(new URL(req.url ?? "/", "http://x").pathname);
+    const url = new URL(req.url ?? "/", "http://x");
+    const delay = Number(url.searchParams.get("delay") ?? 0);
+    if (delay > 0) await new Promise((r) => setTimeout(r, Math.min(delay, 10_000)));
+    const pathname = decodeURIComponent(url.pathname);
     let file = normalize(join(base, pathname));
     if (!file.startsWith(base)) {
       res.writeHead(403).end();

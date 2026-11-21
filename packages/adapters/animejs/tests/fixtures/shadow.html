@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Anime.js in shadow roots</title>
+    <!--
+      Anime.js animating elements inside web components: three x-tile components (test ids
+      tile-1…3) with a dot (motionpr-id dot) in an open shadow root. "play" moves every dot 120px
+      in one staggered animation (400 ms, 100 ms apart).
+    -->
+    <style>
+      body {
+        margin: 0;
+        font: 16px sans-serif;
+      }
+      x-tile {
+        display: block;
+        width: 200px;
+        height: 40px;
+        margin: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <button data-testid="play">Play</button>
+    <x-tile data-testid="tile-1"></x-tile>
+    <x-tile data-testid="tile-2"></x-tile>
+    <x-tile data-testid="tile-3"></x-tile>
+    <script src="anime.umd.min.js"></script>
+    <script src="adapter.js"></script>
+    <script>
+      const { animate, stagger, eases, engine } = window.anime;
+      const motion = MotionprAnime.createAnimeInstrumentation({ eases, engine });
+      const track = motion.wrapAnimate(animate);
+      customElements.define(
+        "x-tile",
+        class extends HTMLElement {
+          constructor() {
+            super();
+            this.attachShadow({ mode: "open" }).innerHTML =
+              '<div data-motionpr-id="dot" style="width:30px;height:30px;background:#0984e3"></div>';
+          }
+        },
+      );
+      const dots = [...document.querySelectorAll("x-tile")].map((tile) =>
+        tile.shadowRoot.querySelector("[data-motionpr-id=dot]"),
+      );
+      document.querySelector("[data-testid=play]").addEventListener("click", () => {
+        track(dots, { translateX: [0, 120], duration: 400, delay: stagger(100), ease: "out(2)" });
+      });
+    </script>
+  </body>
+</html>

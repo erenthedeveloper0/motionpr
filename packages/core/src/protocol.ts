@@ -40,6 +40,11 @@ export interface RawElementIdentity {
   label?: string;
   pseudoElement?: string;
   anchor?: string;
+  /**
+   * Key of the shadow host when the element is inside a shadow root: the key then starts with
+   * it (`test-id:plan-pro >> motionpr-id:glow`), and so does the selector.
+   */
+  shadowHost?: string;
   warnings: string[];
 }
 
@@ -480,8 +485,11 @@ export interface MotionprAgentApi {
   ): Promise<{ state: "ready" | "timeout"; failed: string[]; loading: string[] }>;
   /** Waits (bounded) for non-lazy images to finish; returns how many are still incomplete. */
   pendingImages(timeoutMs: number): Promise<number>;
-  /** Instantly scrolls the window or a container. Throws when the selector matches nothing. */
-  scrollTo(selector: string | null, x: number | null, y: number | null): void;
+  /**
+   * Instantly scrolls the window or a container (an element, or a MotionPR selector: CSS parts
+   * chained with `>>` into shadow roots). Throws when the selector matches nothing.
+   */
+  scrollTo(container: Element | string | null, x: number | null, y: number | null): void;
   scrollPosition(): { x: number; y: number };
   /**
    * Scrolls through the page's scroll engine. `via: auto` uses a registered scroll adapter
@@ -498,6 +506,8 @@ export interface MotionprAgentApi {
     nativeScrollSamples: number;
     /** Scroll containers known in the current window (scanned or seen scrolling). */
     scrollContainers: number;
+    /** Shadow roots the agent watches (attached by script, or declarative and open). */
+    shadowRoots: number;
     adapters: number;
     window: number;
   };
@@ -526,12 +536,14 @@ export interface RawCapabilities {
 }
 
 export interface SmoothScrollRequest {
-  target: number | string;
+  /** A scroll position, or the element to scroll to (an element, or a MotionPR selector). */
+  target: number | string | Element;
   behavior: "smooth" | "instant";
   via: "auto" | "lenis" | "native";
   axis: "vertical" | "horizontal" | null;
   offset: number | null;
-  selector: string | null;
+  /** The native scroll container to scroll (an element, or a MotionPR selector). */
+  selector: string | Element | null;
 }
 
 export interface ScrollSettleOptions {

@@ -510,3 +510,31 @@ describe("GSAP adapter: ScrollTrigger values", () => {
     await context.close();
   });
 });
+
+describe("GSAP adapter: targets inside shadow roots", () => {
+  it("identifies each target through its component's host and samples it", async () => {
+    const bundle = await capture(
+      [
+        { type: "click", selector: "[data-testid=play]" },
+        { type: "capture", label: "played" },
+      ],
+      "/shadow.html",
+    );
+    const scenario = bundle.scenarios[0]!;
+    expect(scenario.status, scenario.error?.message).toBe("passed");
+    const records = scenario.checkpoints[0]!.animations;
+    expect(records.map((r) => r.element.key)).toEqual([
+      "test-id:tile-1 >> motionpr-id:dot",
+      "test-id:tile-2 >> motionpr-id:dot",
+      "test-id:tile-3 >> motionpr-id:dot",
+    ]);
+    // One staggered tween: per-target records in one group, 100 ms apart.
+    expect(new Set(records.map((r) => r.group)).size).toBe(1);
+    for (const [i, r] of records.entries()) {
+      expect(r).toMatchObject({ type: "gsap", element: { shadowHost: `test-id:tile-${i + 1}` } });
+      expect(Math.round(r.startTime! + r.timing.delay)).toBe(i * 100);
+      expect(r.samples.at(0)!.numeric.translateX).toBeCloseTo(0, 1);
+      expect(r.samples.at(-1)!.numeric.translateX).toBeCloseTo(120, 0);
+    }
+  });
+});

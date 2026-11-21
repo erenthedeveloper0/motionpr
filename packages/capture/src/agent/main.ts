@@ -38,6 +38,7 @@ import type {
 } from "@motionpr/core/protocol";
 import { PROTOCOL_VERSION } from "@motionpr/core/protocol";
 import { identifyElement } from "./identity.ts";
+import { closestComposed, createShadowRegistry, shadowRootOf } from "./shadow.ts";
 
 declare const __MOTIONPR_VERSION__: string;
 
@@ -53,6 +54,11 @@ interface Tracked {
   canceledAt: number | null;
   /** Set once the animation finished; a later cancel (e.g. class removed) is not a truncation. */
   finished: boolean;
+  /**
+   * The shadow root its target was in when it was discovered: a target replaced in the DOM is
+   * still identified through that root's host (and re-found there for replay).
+   */
+  shadowRoot: ShadowRoot | null;
 }
 
 /** A native scroll container (an overflow element) known in the current window. */
@@ -158,6 +164,11 @@ export function installAgent(win: Window & typeof globalThis): void {
   let containers = new Map<Element, ContainerTrack>();
   /** When a scan last saw each element without overflow (its scroll offset was 0 then). */
   let scannedAt = new WeakMap<Element, number>();
+  /**
+   * Shadow roots: `document.getAnimations()` and non-composed events (`scroll`, `transitionrun`,
+   * `animationstart`) do not leave them, so each one is polled and listened to directly.
+   */
+  const shadow = createShadowRegistry(win, watchShadowRoot);
 
   const now = () => perf.now();
 
@@ -207,22 +218,23 @@ export function installAgent(win: Window & typeof globalThis): void {
    * time, so latency does not include it), never per frame: about 1 ms per 1,000 elements.
    */
   function scanContainers(): void {
-    if (!config.scrollContainers || replaying) return;
+    if (replaying) return;
+    // The same walk finds declarative shadow roots (they are not created through attachShadow).
+    if (!config.scrollContainers) return shadow.discover();
     const t = now();
     const root = doc.documentElement;
     const main = scrollingElement();
-    const all = doc.getElementsByTagName("*");
-    for (let i = 0; i < all.length; i++) {
-      const el = all[i]!;
-      if (el === root || el === main || containers.has(el)) continue;
+    // The document's elements and those of every shadow root (containers inside components).
+    shadow.forEachElement((el) => {
+      if (el === root || el === main || containers.has(el)) return;
       // No overflow, no scroll range: the offset is 0 (within the sub-pixel the sizes round off).
       if (el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth) {
         scannedAt.set(el, t);
-        continue;
+        return;
       }
-      if (isIgnoredTarget(el)) continue;
+      if (isIgnoredTarget(el)) return;
       newContainer(el, [{ t, x: el.scrollLeft, y: el.scrollTop }], true);
-    }
+    });
   }
 
   /** Records a container's position at one of its scroll events (once per frame while it moves). */
@@ -275,7 +287,10 @@ export function installAgent(win: Window & typeof globalThis): void {
       start: typeof anim.startTime === "number" ? anim.startTime : null,
       canceledAt: null,
       finished: false,
+      shadowRoot: null,
     };
+    const target = anim.effect instanceof win.KeyframeEffect ? anim.effect.target : null;
+    if (target) entry.shadowRoot = shadowRootOf(target);
     tracked.set(anim, entry);
     lastDiscoveryAt = entry.discoveredAt;
     // `finish()` called in the same task as `animate()` (a common reduced-motion fallback) jumps
@@ -298,9 +313,19 @@ export function installAgent(win: Window & typeof globalThis): void {
     });
   }
 
+  /** Running and filling animations of the document and of every shadow root MotionPR knows. */
+  function allAnimations(): Animation[] {
+    const all = doc.getAnimations();
+    for (const root of shadow.roots()) {
+      const inRoot = root.getAnimations();
+      for (let i = 0; i < inRoot.length; i++) all.push(inRoot[i]!);
+    }
+    return all;
+  }
+
   function poll(): void {
     if (replaying) return;
-    for (const anim of doc.getAnimations()) track(anim);
+    for (const anim of allAnimations()) track(anim);
     for (const entry of tracked.values()) {
       if (entry.start === null && typeof entry.anim.startTime === "number")
         entry.start = entry.anim.startTime;
@@ -345,36 +370,44 @@ export function installAgent(win: Window & typeof globalThis): void {
   };
   win.requestAnimationFrame(frame);
   // Scroll containers: element scroll events do not bubble, but they pass the window while
-  // capturing. Document scrolling (target: the document) is polled per frame above.
-  win.addEventListener(
-    "scroll",
-    (event) => {
-      if (replaying || !config.scrollContainers) return;
-      const target = event.target;
-      if (target instanceof win.Element && !isDocumentScroller(target))
-        recordContainerScroll(target);
-    },
-    { capture: true, passive: true },
-  );
+  // capturing (inside a shadow root they stop at the root: see watchShadowRoot). Document
+  // scrolling (target: the document) is polled per frame above.
+  function onScroll(event: Event): void {
+    if (replaying || !config.scrollContainers) return;
+    const target = event.target;
+    if (target instanceof win.Element && !isDocumentScroller(target)) recordContainerScroll(target);
+  }
+  win.addEventListener("scroll", onScroll, { capture: true, passive: true });
+  // Declarative shadow roots of the initial HTML, before the first interaction scans the page.
+  doc.addEventListener("DOMContentLoaded", () => shadow.discover(), { once: true });
+
+  /** Listens inside a shadow root for what does not leave it. */
+  function watchShadowRoot(root: ShadowRoot): void {
+    for (const type of ["transitionrun", "transitionstart", "animationstart"]) {
+      root.addEventListener(type, poll, true);
+    }
+    root.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    root.addEventListener("scroll", onTriggerEvent, { capture: true, passive: true });
+  }
 
   // ------------------------------------------------------------------------------------------
   // Triggers
   // ------------------------------------------------------------------------------------------
 
+  function onTriggerEvent(event: Event): void {
+    const type = event.type;
+    if (!pendingTrigger || pendingTrigger.event || !event.isTrusted) return;
+    if (!TRIGGER_EVENTS[pendingTrigger.type].includes(type)) return;
+    // `scroll` events fire after the position changed, so they would place the trigger
+    // after the motion it caused; keep the step start for them.
+    if (type !== "scroll") pendingTrigger.time = event.timeStamp;
+    pendingTrigger.event = type;
+  }
+  // Input events are composed and reach the window from inside shadow roots; `scroll` is not
+  // (watchShadowRoot listens for it in each root).
   const allTriggerEvents = new Set(Object.values(TRIGGER_EVENTS).flat());
   for (const type of allTriggerEvents) {
-    win.addEventListener(
-      type,
-      (event) => {
-        if (!pendingTrigger || pendingTrigger.event || !event.isTrusted) return;
-        if (!TRIGGER_EVENTS[pendingTrigger.type].includes(type)) return;
-        // `scroll` events fire after the position changed, so they would place the trigger
-        // after the motion it caused; keep the step start for them.
-        if (type !== "scroll") pendingTrigger.time = event.timeStamp;
-        pendingTrigger.event = type;
-      },
-      { capture: true, passive: true },
-    );
+    win.addEventListener(type, onTriggerEvent, { capture: true, passive: true });
   }
 
   // ------------------------------------------------------------------------------------------
@@ -385,7 +418,8 @@ export function installAgent(win: Window & typeof globalThis): void {
     if (!el) return false;
     for (const selector of config.ignoreSelectors) {
       try {
-        if (el.closest(selector)) return true;
+        // The element, its ancestors, and the hosts of the shadow roots it is in.
+        if (closestComposed(el, selector)) return true;
       } catch {
         // invalid selector: reported by the runner when configuring
       }
@@ -552,7 +586,7 @@ export function installAgent(win: Window & typeof globalThis): void {
       scrollRange: null,
       scrollLink: null,
       name,
-      element: identifyElement(target, effect.pseudoElement, config),
+      element: identifyElement(target, effect.pseudoElement, config, entry.shadowRoot),
       startTime: entry.finishedOnDiscovery ? null : start,
       timing: rawTiming,
       keyframes,
@@ -1099,16 +1133,13 @@ export function installAgent(win: Window & typeof globalThis): void {
   function retarget(record: RawAnimation, original: Element | null): Element | null {
     if (original?.isConnected) return original;
     if (!record.element.selector) return null;
-    try {
-      const replacement = doc.querySelector(record.element.selector);
-      if (replacement) {
-        record.notes.push(
-          "Original element was replaced in the DOM; replayed on the element now matching its selector.",
-        );
-        return replacement;
-      }
-    } catch {
-      // ignore invalid selector
+    // Selectors of elements in shadow roots chain through their hosts (`host >> inner`).
+    const replacement = shadow.query(record.element.selector);
+    if (replacement) {
+      record.notes.push(
+        "Original element was replaced in the DOM; replayed on the element now matching its selector.",
+      );
+      return replacement;
     }
     return null;
   }
@@ -1175,7 +1206,7 @@ export function installAgent(win: Window & typeof globalThis): void {
     }
 
     // Freeze everything else so frames are deterministic, and neutralize window originals.
-    for (const anim of doc.getAnimations()) {
+    for (const anim of allAnimations()) {
       if (clones.has(anim)) continue;
       const state = anim.playState;
       const isWindow = windowAnims.has(anim);
@@ -1379,11 +1410,7 @@ export function installAgent(win: Window & typeof globalThis): void {
     const el = adapterTargets.get(rec.uid);
     if (el) return el;
     if (!rec.element.selector) return null;
-    try {
-      return doc.querySelector(rec.element.selector);
-    } catch {
-      return null;
-    }
+    return shadow.query(rec.element.selector);
   }
 
   function endReplay(): void {
@@ -1421,7 +1448,7 @@ export function installAgent(win: Window & typeof globalThis): void {
     let finiteCount = 0;
     let infinite = 0;
     const running: string[] = [];
-    for (const anim of doc.getAnimations()) {
+    for (const anim of allAnimations()) {
       if (clones.has(anim)) continue;
       if (anim.playState !== "running" && !anim.pending) continue;
       const effect = anim.effect;
@@ -1536,10 +1563,19 @@ export function installAgent(win: Window & typeof globalThis): void {
     return adapters.filter((a) => typeof a.scrollTo === "function");
   }
 
+  /**
+   * The element a step names: passed in (the runner resolves step selectors with Playwright, as
+   * for clicks) or a MotionPR selector, which chains into shadow roots with `>>`.
+   */
+  function stepElement(target: Element | string): Element {
+    if (typeof target !== "string") return target;
+    const el = shadow.query(target);
+    if (!el) throw new Error(`No element matches ${target}`);
+    return el;
+  }
+
   function smoothScrollTo(request: SmoothScrollRequest): { via: "lenis" | "native" } {
-    const targetEl = typeof request.target === "string" ? doc.querySelector(request.target) : null;
-    if (typeof request.target === "string" && !targetEl)
-      throw new Error(`No element matches ${request.target}`);
+    const targetEl = typeof request.target === "number" ? null : stepElement(request.target);
     if (request.via !== "native" && !request.selector) {
       for (const adapter of scrollAdapters()) {
         const handled = adapter.scrollTo!(targetEl ?? (request.target as number), {
@@ -1553,8 +1589,7 @@ export function installAgent(win: Window & typeof globalThis): void {
           "scrollTo via lenis: no Lenis instance is attached (call motionprLenis.attach(lenis)).",
         );
     }
-    const container = request.selector ? doc.querySelector(request.selector) : null;
-    if (request.selector && !container) throw new Error(`No element matches ${request.selector}`);
+    const container = request.selector ? stepElement(request.selector) : null;
     if (container) watchContainer(container);
     const el = container ?? scrollingElement();
     const horizontal = request.axis === "horizontal";
@@ -1783,15 +1818,17 @@ export function installAgent(win: Window & typeof globalThis): void {
     },
     async pendingImages(timeoutMs) {
       const deadline = Date.now() + timeoutMs;
-      const incomplete = () =>
-        Array.from(doc.images).filter((img) => img.loading !== "lazy" && !img.complete).length;
+      const incomplete = () => {
+        const images: HTMLImageElement[] = Array.from(doc.images);
+        for (const root of shadow.roots()) images.push(...root.querySelectorAll("img"));
+        return images.filter((img) => img.loading !== "lazy" && !img.complete).length;
+      };
       while (incomplete() > 0 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
       return incomplete();
     },
-    scrollTo(selector, x, y) {
-      const target = selector ? doc.querySelector(selector) : null;
-      if (selector && !target) throw new Error(`No element matches ${selector}`);
-      const el = (target ?? doc.scrollingElement ?? doc.documentElement) as Element;
+    scrollTo(container, x, y) {
+      const target = container ? stepElement(container) : null;
+      const el = target ?? doc.scrollingElement ?? doc.documentElement;
       el.scrollTo({
         left: x ?? el.scrollLeft,
         top: y ?? el.scrollTop,
@@ -1806,6 +1843,7 @@ export function installAgent(win: Window & typeof globalThis): void {
       tracked: tracked.size,
       nativeScrollSamples: nativeScroll.length,
       scrollContainers: containers.size,
+      shadowRoots: shadow.roots().length,
       adapters: adapters.length,
       window: windowIndex,
     }),

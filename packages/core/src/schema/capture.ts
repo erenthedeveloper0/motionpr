@@ -47,6 +47,12 @@ export const elementIdentitySchema = z.object({
   label: z.string().optional(),
   pseudoElement: z.string().optional(),
   anchor: z.string().optional(),
+  /**
+   * Key of the shadow host, for an element inside a shadow root. Its key and selector start with
+   * the host's (`test-id:plan-pro >> motionpr-id:glow`): it is identified within that root.
+   * Captures made before `0.5.0-alpha` identified such elements without their host.
+   */
+  shadowHost: z.string().optional(),
   warnings: z.array(z.string()),
 });
 export type ElementIdentity = z.infer<typeof elementIdentitySchema>;
@@ -494,6 +500,13 @@ export const captureSettingsSchema = z.object({
    * as `false`: a container scroll missing from them is not evidence that it did not move.
    */
   scrollContainers: z.boolean().default(false),
+  /**
+   * Whether MotionPR looked inside shadow roots: their animations and scroll containers were
+   * recorded and their elements identified through their hosts (always, since `0.5.0-alpha`).
+   * Older captures read as `false`: they missed CSS motion in shadow roots and identified the
+   * rest without its host, so a shadow-root record missing from them is not evidence.
+   */
+  shadowRoots: z.boolean().default(false),
 });
 
 export const captureBundleSchema = z.object({
