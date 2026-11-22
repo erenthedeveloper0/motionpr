@@ -122,7 +122,7 @@ in [Severity & thresholds](docs/features/severity.md).
 
 ## Status
 
-**Alpha — `0.4.0-alpha`.** It works end to end in Chromium, Firefox and WebKit for the engines below, and
+**Alpha — `0.5.0-alpha`.** It works end to end in Chromium, Firefox and WebKit for the engines below, and
 every claim in the documentation is backed by an automated test. Do not put it on a path that
 blocks production releases yet: the capture format and the public API may change before `1.0`.
 Older captures are migrated when they are read.
@@ -150,7 +150,7 @@ Older captures are migrated when they are read.
 
 ### Not built yet
 
-Shadow DOM selector piercing · example projects · engines in parallel within one run. The
+Example projects · engines in parallel within one run. The
 [roadmap](ROADMAP.md) orders them, and [Limitations](docs/advanced/limitations.md) lists every
 known gap.
 
