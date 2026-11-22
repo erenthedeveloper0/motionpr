@@ -5,7 +5,7 @@ description: What this alpha does not do, and where each limitation is documente
 
 # Limitations
 
-MotionPR is in alpha (`0.4.0-alpha`). Everything below is a known limitation of this release, not
+MotionPR is in alpha (`0.5.0-alpha`). Everything below is a known limitation of this release, not
 a hidden one.
 
 ## Browsers and platforms
