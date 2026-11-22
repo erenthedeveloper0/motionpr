@@ -18,8 +18,18 @@ export const SUPPORTED_ENGINE_RANGES = {
   lenis: ">=1.1.0 <2.0.0",
 } as const;
 
-/** Version of the agent/adapter protocol. Bumped on breaking changes to these interfaces. */
-export const PROTOCOL_VERSION = 1;
+/**
+ * Version of the agent/adapter protocol. Protocol 2 (since `0.5.0-alpha`) is frozen: until 1.0,
+ * members are only added as optional ones whose absence keeps today's behaviour, and a change
+ * that would break a protocol 2 adapter gets a new number while the agent keeps accepting 2.
+ */
+export const PROTOCOL_VERSION = 2;
+
+/**
+ * Protocols the agent accepts from adapters. Protocol 1 adapters (no `protocol` member) have the
+ * same members as protocol 2 and keep working.
+ */
+export const SUPPORTED_PROTOCOLS: readonly number[] = [1, 2];
 
 export type AnimationType =
   "css-animation" | "css-transition" | "web-animation" | "gsap" | "animejs" | "custom";
@@ -218,14 +228,22 @@ export type AdapterCapability =
   "animations" | "timelines" | "staggers" | "replay" | "scroll" | "scroll-control" | "waapi-claims";
 
 /**
- * Contract implemented by every adapter running inside the page (GSAP, Anime.js, Lenis, custom).
- * Every method except `name` and `collect` is optional; the agent checks capabilities before
- * calling. Adapters must never throw out of these methods into application code, must not
- * re-fire application callbacks, and must leave engine state as they found it after replay.
+ * Contract implemented by every adapter running inside the page (GSAP, Anime.js, Lenis, custom):
+ * adapter protocol 2. Every member except `name` and `collect` is optional; the agent checks
+ * capabilities before calling. Adapters must never throw out of these methods into application
+ * code, must not re-fire application callbacks, and must leave engine state as they found it
+ * after replay. Entries whose fields do not have the documented types are left out of the
+ * capture with an `ADAPTER_RECORD_INVALID` diagnostic; `motionpr adapter check` checks all rules.
  */
 export interface MotionprAdapter {
   /** Adapter id: `gsap`, `animejs`, `lenis`, or a custom name. */
   readonly name: string;
+  /**
+   * The protocol this adapter implements: `2`. Without it the adapter is treated as protocol 1
+   * (same members). The agent does not register an adapter that declares a protocol it does not
+   * support, and records why in the capture's adapter table.
+   */
+  readonly protocol?: number;
   /** Version of the engine library the adapter observed (e.g. GSAP's `gsap.version`). */
   readonly version?: string;
   /** Engine version range the adapter is tested against, e.g. `>=4.0.0 <5`. */
@@ -407,6 +425,8 @@ export interface RawScrollTrack {
 
 export interface RawAdapterStatus {
   id: string;
+  /** The protocol the adapter declared (1 when it declared none). */
+  protocol: number | null;
   engineVersion: string | null;
   supportedRange: string | null;
   capabilities: string[];

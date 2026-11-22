@@ -36,7 +36,17 @@ import type {
   TriggerKind,
   WindowOrigin,
 } from "@motionpr/core/protocol";
-import { PROTOCOL_VERSION } from "@motionpr/core/protocol";
+import { PROTOCOL_VERSION, SUPPORTED_PROTOCOLS } from "@motionpr/core/protocol";
+import {
+  animationProblems,
+  declaredProtocol,
+  describeValue,
+  diagnosticProblems,
+  formatProblems,
+  scrollTrackProblems,
+  timelineProblems,
+  type ContractProblem,
+} from "@motionpr/core/adapter-contract";
 import { identifyElement } from "./identity.ts";
 import { closestComposed, createShadowRegistry, shadowRootOf } from "./shadow.ts";
 
@@ -155,6 +165,8 @@ export function installAgent(win: Window & typeof globalThis): void {
   let lastCollect: CollectResult | null = null;
   let replay: { entries: ReplayEntry[]; saved: SavedState[]; origin: number } | null = null;
   const failedAdapters = new Set<string>();
+  /** Adapters that declared a protocol this agent does not support: not registered, reported. */
+  const rejectedAdapters: RawAdapterStatus[] = [];
   /** Document scroll positions observed this window (native scrolling, recorded live). */
   let nativeScroll: { t: number; x: number; y: number }[] = [];
   /** Last scroller positions seen by pending(), to tell advancing from stalled smooth scrolls. */
@@ -650,7 +662,57 @@ export function installAgent(win: Window & typeof globalThis): void {
     };
   }
 
+  /** An adapter method's result as an array; anything else is a contract error. */
+  function list<T>(value: readonly T[] | undefined, method: string): readonly T[] {
+    if (value === undefined) return [];
+    if (!Array.isArray(value))
+      throw new TypeError(`${method}() must return an array; got ${describeValue(value)}.`);
+    return value;
+  }
+
+  /**
+   * Leaves out entries with `invalid` problems (they would make the capture unreadable) and
+   * reports them: one diagnostic each for the first five of an adapter's collect, then a count.
+   */
+  function invalidEntries(adapter: MotionprAdapter, out: RawDiagnostic[]) {
+    let count = 0;
+    const check = (kind: string, entry: unknown, problems: ContractProblem[]): boolean => {
+      const bad = problems.filter((p) => p.level === "invalid");
+      if (!bad.length) return false;
+      if (++count <= 5) {
+        const id =
+          typeof entry === "object" && entry !== null
+            ? ((entry as { id?: unknown }).id ?? (entry as { sessionId?: unknown }).sessionId)
+            : undefined;
+        out.push({
+          level: "warning",
+          code: "ADAPTER_RECORD_INVALID",
+          message: `Adapter "${adapter.name}" reported an invalid ${kind}${id !== undefined ? ` ${describeValue(id)}` : ""}, left out of the capture: ${formatProblems(bad)}`,
+        });
+      }
+      return true;
+    };
+    const finish = () => {
+      if (count > 5)
+        out.push({
+          level: "warning",
+          code: "ADAPTER_RECORD_INVALID",
+          message: `Adapter "${adapter.name}" reported ${count - 5} more invalid entries, also left out.`,
+        });
+    };
+    return { check, finish };
+  }
+
   function adapterRecord(adapter: MotionprAdapter, a: AdapterAnimation): RawAnimation | null {
+    // Missing nullable fields read as null (`animationProblems` reports them as violations).
+    a = {
+      ...a,
+      id: String(a.id),
+      name: a.name ?? null,
+      target: a.target ?? null,
+      startTime: a.startTime ?? null,
+      duration: a.duration ?? null,
+    };
     if (a.target && isIgnoredTarget(a.target)) return null;
     adapterSources.set(`${adapter.name}:${a.id}`, { adapter, id: a.id });
     if (a.name && config.ignoreAnimationNames.includes(a.name)) return null;
@@ -684,7 +746,7 @@ export function installAgent(win: Window & typeof globalThis): void {
       source: adapter.name,
       driver: a.driver ?? "javascript",
       provenance: { ...(a.provenance ?? {}) },
-      parent: a.parent ? `${adapter.name}:${a.parent}` : null,
+      parent: typeof a.parent === "string" && a.parent ? `${adapter.name}:${a.parent}` : null,
       easingKind: a.easingKind ?? null,
       easingSamplesSource: a.easingSamplesSource ?? null,
       progressTrace: (a.progressTrace ?? []).map((p) => ({ time: p.t, progress: p.progress })),
@@ -933,33 +995,51 @@ export function installAgent(win: Window & typeof globalThis): void {
     adapterSources.clear();
     for (const adapter of adapters) {
       try {
-        for (const a of adapter.collect()) {
+        const { check: invalid, finish } = invalidEntries(adapter, notes);
+        const collectedAt = now();
+        const seen = new Set<string>();
+        for (const a of list(adapter.collect(), "collect")) {
+          if (invalid("animation", a, animationProblems(a, { now: collectedAt }))) continue;
+          const id = String(a.id);
+          if (seen.has(id)) {
+            invalid("animation", a, [
+              {
+                level: "invalid",
+                field: "id",
+                message: `id ${describeValue(id)} is reported twice; ids must be unique.`,
+              },
+            ]);
+            continue;
+          }
+          seen.add(id);
           const r = adapterRecord(adapter, a);
           if (r) records.push(r);
         }
-        for (const tl of adapter.collectTimelines?.() ?? []) {
+        for (const tl of list(adapter.collectTimelines?.(), "collectTimelines")) {
+          if (invalid("timeline", tl, timelineProblems(tl))) continue;
           timelines.push({
             uid: `${adapter.name}:${tl.id}`,
             source: adapter.name,
-            name: tl.name,
-            startTime: tl.startTime,
+            name: tl.name ?? null,
+            startTime: tl.startTime ?? null,
             duration: finite(tl.duration),
             iterations: Number.isFinite(tl.iterations) ? tl.iterations : "infinite",
             direction: tl.direction,
             playbackRate: tl.playbackRate,
             playState: tl.playState,
-            progress: tl.progress,
+            progress: tl.progress ?? null,
             labels: [...tl.labels].sort((x, y) => x.time - y.time),
             provenance: { ...(tl.provenance ?? {}) },
             notes: [...(tl.notes ?? [])],
             meta: { ...(tl.meta ?? {}) },
           });
         }
-        for (const track of adapter.collectScroll?.() ?? []) {
+        for (const track of list(adapter.collectScroll?.(), "collectScroll")) {
+          if (invalid("scroll track", track, scrollTrackProblems(track))) continue;
           if (track.wrapper) adapterWrappers.add(track.wrapper);
           scrollTracks.push({
             source: adapter.name === "lenis" ? "lenis" : "native",
-            sessionId: track.sessionId,
+            sessionId: String(track.sessionId),
             axis: track.axis,
             wrapper: track.wrapper ? identifyElement(track.wrapper, null, config) : null,
             config: { ...track.config },
@@ -970,6 +1050,7 @@ export function installAgent(win: Window & typeof globalThis): void {
             meta: { ...(track.meta ?? {}) },
           });
         }
+        finish();
       } catch (error) {
         failedAdapters.add(adapter.name);
         notes.push({
@@ -1742,29 +1823,60 @@ export function installAgent(win: Window & typeof globalThis): void {
     });
   }
 
+  const text = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
+
+  /** Capabilities an adapter declared, as strings (anything else is the conformance suite's). */
+  function capabilityList(adapter: MotionprAdapter): string[] {
+    const declared: unknown = adapter.capabilities;
+    return Array.isArray(declared)
+      ? declared.filter((c): c is string => typeof c === "string")
+      : [];
+  }
+
   function adapterStatus(): RawAdapterStatus[] {
-    return adapters.map((adapter) => {
-      let messages: RawDiagnostic[];
+    const registered = adapters.map((adapter): RawAdapterStatus => {
+      const messages: RawDiagnostic[] = [];
       try {
-        messages = (adapter.diagnostics?.() ?? []).map((d) => ({ ...d }));
-      } catch (error) {
-        messages = [
-          {
+        const reported: unknown = adapter.diagnostics?.() ?? [];
+        if (!Array.isArray(reported))
+          throw new TypeError(
+            `diagnostics() must return an array; got ${describeValue(reported)}.`,
+          );
+        let invalid = 0;
+        for (const d of reported) {
+          if (diagnosticProblems(d).length) invalid++;
+          else {
+            const { level, code, message } = d as RawDiagnostic;
+            messages.push({ level, code, message });
+          }
+        }
+        if (invalid)
+          messages.push({
             level: "warning",
-            code: "ADAPTER_DIAGNOSTICS_FAILED",
-            message: `Adapter "${adapter.name}" failed to report diagnostics: ${String(error)}`,
-          },
-        ];
+            code: "ADAPTER_DIAGNOSTICS_INVALID",
+            message: `Adapter "${adapter.name}" reported ${invalid} malformed diagnostic${invalid === 1 ? "" : "s"} (each needs a level of info, warning or error, a code and a message); left out.`,
+          });
+      } catch (error) {
+        messages.push({
+          level: "warning",
+          code: "ADAPTER_DIAGNOSTICS_FAILED",
+          message: `Adapter "${adapter.name}" failed to report diagnostics: ${String(error)}`,
+        });
       }
       return {
         id: adapter.name,
-        engineVersion: adapter.version ?? null,
-        supportedRange: adapter.supportedRange ?? null,
-        capabilities: [...(adapter.capabilities ?? [])],
+        protocol: declaredProtocol(adapter),
+        engineVersion: text(adapter.version),
+        supportedRange: text(adapter.supportedRange),
+        capabilities: capabilityList(adapter),
         failed: failedAdapters.has(adapter.name),
         diagnostics: messages,
       };
     });
+    return [
+      ...registered,
+      ...rejectedAdapters.map((r) => ({ ...r, diagnostics: [...r.diagnostics] })),
+    ];
   }
 
   const api: MotionprAgentApi = {
@@ -1775,6 +1887,27 @@ export function installAgent(win: Window & typeof globalThis): void {
         throw new TypeError("MotionPR: an adapter needs a name and a collect() function.");
       }
       if (adapters.some((a) => a.name === adapter.name)) return;
+      if (rejectedAdapters.some((a) => a.id === adapter.name)) return;
+      const protocol = declaredProtocol(adapter);
+      if (protocol === null) {
+        // A newer adapter may rely on agent behaviour this version lacks: not registered.
+        rejectedAdapters.push({
+          id: adapter.name,
+          protocol: null,
+          engineVersion: text(adapter.version),
+          supportedRange: text(adapter.supportedRange),
+          capabilities: capabilityList(adapter),
+          failed: true,
+          diagnostics: [
+            {
+              level: "error",
+              code: "ADAPTER_PROTOCOL_UNSUPPORTED",
+              message: `Adapter "${adapter.name}" implements adapter protocol ${describeValue(adapter.protocol)}; this MotionPR (agent ${api.version}) supports protocols ${SUPPORTED_PROTOCOLS.join(" and ")}. The adapter was not registered.`,
+            },
+          ],
+        });
+        return;
+      }
       adapters.push(adapter);
       try {
         adapter.beginWindow?.();
@@ -1787,7 +1920,7 @@ export function installAgent(win: Window & typeof globalThis): void {
       if (index !== -1) adapters.splice(index, 1);
     },
     adapters: () =>
-      adapters.map((a) => ({ name: a.name, ...(a.version ? { version: a.version } : {}) })),
+      adapters.map((a) => ({ name: a.name, ...(text(a.version) ? { version: a.version } : {}) })),
     configure(partial) {
       Object.assign(config, partial);
     },

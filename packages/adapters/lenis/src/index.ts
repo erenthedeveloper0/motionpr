@@ -18,6 +18,7 @@
  */
 import {
   AGENT_GLOBAL,
+  PROTOCOL_VERSION,
   SUPPORTED_ENGINE_RANGES,
   type AdapterCapability,
   type AdapterDiagnostic,
@@ -159,6 +160,7 @@ function configOf(lenis: LenisLike): Record<string, MetaValue> {
 
 class LenisAdapter implements MotionprAdapter {
   readonly name = ADAPTER_ID;
+  readonly protocol = PROTOCOL_VERSION;
   readonly supportedRange = SUPPORTED_LENIS_RANGE;
   readonly capabilities = CAPABILITIES;
   readonly sessions: Session[] = [];

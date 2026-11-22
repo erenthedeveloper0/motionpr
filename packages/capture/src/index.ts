@@ -1,4 +1,5 @@
 export { AGENT_SOURCE } from "./agent/agent-bundle.generated.ts";
+export { checkAdapter, type AdapterCheckOptions, type AdapterCheckReport } from "./conformance.ts";
 export {
   browserNameOf,
   browserType,

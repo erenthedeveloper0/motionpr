@@ -21,6 +21,7 @@
  */
 import {
   AGENT_GLOBAL,
+  PROTOCOL_VERSION,
   SUPPORTED_ENGINE_RANGES,
   type AdapterAnimation,
   type AdapterCapability,
@@ -207,6 +208,7 @@ interface RootMapping {
 
 class GsapAdapter implements MotionprAdapter {
   readonly name = "gsap";
+  readonly protocol = PROTOCOL_VERSION;
   readonly version: string;
   readonly supportedRange = SUPPORTED_GSAP_RANGE;
   readonly capabilities = CAPABILITIES;

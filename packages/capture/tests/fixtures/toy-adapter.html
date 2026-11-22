@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>toy engine and adapter</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #fff;
+      }
+      .box {
+        position: absolute;
+        left: 20px;
+        width: 60px;
+        height: 60px;
+        background: rgb(0, 0, 255);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box" data-testid="title" style="top: 40px"></div>
+    <div class="box" data-testid="card" style="top: 140px"></div>
+    <div class="box" data-testid="spinner" style="top: 240px"></div>
+    <script>
+      // A minimal tween engine and a protocol 2 adapter for it. `?bug=<name>` (repeatable)
+      // breaks one rule, so the conformance suite's checks can be tested against real failures.
+      const bugs = new URLSearchParams(location.search).getAll("bug");
+      const bug = (name) => bugs.includes(name);
+      const hook = () => window.__MOTIONPR_CHECK__?.callback();
+
+      // --- the engine ------------------------------------------------------------------------
+      const tweens = [];
+      const ease = (p) => p * p * (3 - 2 * p);
+      const total = (t) => (t.repeat < 0 ? Infinity : t.duration * (t.repeat + 1));
+      function progressAt(t, time) {
+        const local = time - t.start - t.delay;
+        if (local <= 0) return 0;
+        if (local >= total(t)) return 1;
+        return (local % t.duration) / t.duration;
+      }
+      function render(t, time) {
+        t.el.style.transform = `translateX(${(t.x * ease(progressAt(t, time))).toFixed(3)}px)`;
+      }
+      function tween(el, { x, duration, delay = 0, repeat = 0, onUpdate, onComplete }) {
+        const t = { id: `t${tweens.length + 1}`, el, x, duration, delay, repeat };
+        Object.assign(t, { start: performance.now(), paused: false, done: false, endedAt: null });
+        Object.assign(t, { onUpdate, onComplete });
+        tweens.push(t);
+        return t;
+      }
+      function tick(now) {
+        for (const t of tweens) {
+          if (t.paused || t.done) continue; // finished tweens are not rendered again
+          render(t, now);
+          t.onUpdate?.();
+          if (now - t.start - t.delay >= total(t)) {
+            t.done = true;
+            t.endedAt = t.start + t.delay + total(t);
+            t.onComplete?.();
+          }
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+
+      // --- the adapter -----------------------------------------------------------------------
+      if (!window.__MOTIONPR_AGENT__ && bug("needs-agent"))
+        throw new Error("toy adapter: no MotionPR agent");
+      const SAMPLES = Array.from({ length: 65 }, (_, i) => ease(i / 64));
+      let windowOpenedAt = performance.now();
+      let saved = null;
+      let consumed = false;
+      const adapter = {
+        name: "toy",
+        ...(bug("protocol-1") ? {} : { protocol: bug("protocol-3") ? 3 : 2 }),
+        version: "1.0.0",
+        supportedRange: ">=1.0.0 <2.0.0",
+        capabilities: ["animations", "replay"],
+        beginWindow() {
+          if (!bug("stale-window")) windowOpenedAt = performance.now();
+        },
+        collect() {
+          if (bug("consume") && consumed) return [];
+          consumed = true;
+          return tweens
+            .filter((t) => !t.done || t.endedAt >= windowOpenedAt)
+            .map((t) => ({
+              id: t.id,
+              ...(bug("no-name") ? {} : { name: null }),
+              target: t.el,
+              startTime: t.start,
+              duration: bug("bad-record") ? String(t.duration) : t.duration,
+              delay: t.delay,
+              iterations: t.repeat < 0 ? Infinity : t.repeat + 1,
+              direction: bug("bad-one") && t.id === "t1" ? "sideways" : "normal",
+              playbackRate: 1,
+              easing: { value: "smoothstep", samples: SAMPLES },
+              properties: ["transform"],
+              playState: t.paused ? "paused" : t.done ? "finished" : "running",
+              samplable: true,
+            }));
+        },
+        isAnimating() {
+          return (
+            bug("always-animating") || tweens.some((t) => t.repeat >= 0 && !t.done && !t.paused)
+          );
+        },
+        beginReplay() {
+          saved = tweens.map((t) => ({ t, paused: t.paused }));
+          if (!bug("no-pause")) for (const t of tweens) t.paused = true;
+        },
+        seek(time) {
+          for (const t of tweens) {
+            render(t, time);
+            if (bug("callbacks")) t.onUpdate?.();
+          }
+        },
+        endReplay() {
+          for (const { t, paused } of saved ?? []) {
+            t.paused = paused;
+            if (!bug("no-restore")) render(t, performance.now());
+          }
+          saved = null;
+        },
+        diagnostics() {
+          return bug("bad-diagnostics") ? [{ level: "fatal", code: "TOY" }] : [];
+        },
+        ...(bug("claims-all") ? { claims: () => ({ name: "toy" }) } : {}),
+      };
+      if (!bug("no-register")) window.__MOTIONPR_AGENT__?.registerAdapter(adapter);
+      if (bug("two"))
+        window.__MOTIONPR_AGENT__?.registerAdapter({
+          ...adapter,
+          name: "toy-2",
+          collect: () => [],
+        });
+
+      // --- the page's motion: starts on load -------------------------------------------------
+      const $ = (id) => document.querySelector(`[data-testid=${id}]`);
+      tween($("title"), { x: 120, duration: 500, onUpdate: hook, onComplete: hook });
+      tween($("card"), { x: 80, duration: 400, delay: 150, onComplete: hook });
+      tween($("spinner"), { x: 40, duration: 1000, repeat: -1, onUpdate: hook });
+    </script>
+  </body>
+</html>

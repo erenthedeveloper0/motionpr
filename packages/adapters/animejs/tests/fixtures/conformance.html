@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>anime.js conformance fixture</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #fff;
+      }
+      .box {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background: rgb(0, 0, 255);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box" data-testid="box" style="top: 20px; left: 20px"></div>
+    <div class="box item" data-testid="item-1" style="top: 100px; left: 20px"></div>
+    <div class="box item" data-testid="item-2" style="top: 100px; left: 90px"></div>
+    <div class="box" data-testid="tl-a" style="top: 180px; left: 20px"></div>
+    <div class="box" data-testid="tl-b" style="top: 180px; left: 90px"></div>
+    <div class="box" data-testid="loop" style="top: 260px; left: 20px"></div>
+    <div class="box" data-testid="native" style="top: 340px; left: 20px"></div>
+    <script src="anime.umd.min.js"></script>
+    <script src="adapter.js"></script>
+    <script>
+      // Motion that starts on load, as the conformance suite expects: an animation, a stagger,
+      // a timeline, an endless loop and a WAAPI animation. Callbacks report to the suite's hook.
+      const { animate, createTimeline, stagger, waapi, eases, engine } = window.anime;
+      const motion = MotionprAnime.createAnimeInstrumentation({ eases, engine });
+      const track = motion.wrapAnimate(animate);
+      const timeline = motion.wrapTimeline(createTimeline);
+      const waapiAnimate = motion.wrapWaapi(waapi.animate);
+      const hook = () => window.__MOTIONPR_CHECK__?.callback();
+      const $ = (s) => document.querySelector(`[data-testid=${s}]`);
+      track($("box"), {
+        translateX: [0, 200],
+        duration: 500,
+        ease: "out(3)",
+        onUpdate: hook,
+        onComplete: hook,
+      });
+      track(".item", { translateY: [24, 0], opacity: [0, 1], duration: 400, delay: stagger(80) });
+      const tl = timeline({ defaults: { duration: 300, ease: "outQuad" }, onComplete: hook });
+      tl.add($("tl-a"), { translateX: [0, 100] }).add($("tl-b"), { translateX: [0, 100] });
+      motion.track(tl, "intro-tl");
+      track($("loop"), {
+        rotate: [0, 360],
+        duration: 1000,
+        loop: true,
+        ease: "linear",
+        onLoop: hook,
+      });
+      waapiAnimate($("native"), { translateX: [0, 120], duration: 600, ease: "out(2)" });
+    </script>
+  </body>
+</html>

@@ -6,7 +6,7 @@ import {
   type CaptureBundle,
   type Checkpoint,
 } from "@motionpr/core";
-import { AGENT_SOURCE } from "@motionpr/capture";
+import { AGENT_SOURCE, checkAdapter } from "@motionpr/capture";
 import { compareCaptures } from "@motionpr/comparison";
 import { startHarness, type Harness } from "./harness.ts";
 
@@ -384,3 +384,20 @@ describe("Anime.js adapter: targets inside shadow roots", () => {
 });
 
 void resolveConfig;
+
+describe("adapter conformance suite (adapter protocol 2)", () => {
+  // Its page starts an animation, a
+  // stagger, a timeline, an endless loop and a WAAPI animation on load.
+  it("passes every check that applies to the animejs adapter", async () => {
+    const report = await checkAdapter({
+      page: `${h.server.url}/conformance.html`,
+      browser: h.browser,
+    });
+    expect(report.adapter).toMatchObject({ name: "animejs", protocol: 2 });
+    expect(
+      report.checks.filter((c) => c.status === "fail" || c.status === "warn"),
+      JSON.stringify(report.checks, null, 1),
+    ).toEqual([]);
+    expect(report.passed).toBe(true);
+  });
+});

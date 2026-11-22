@@ -45,6 +45,22 @@ function comparator(token: string, v: Triple): boolean {
   }
 }
 
+/** True when every comparator of `range` parses (`>=4.0.0 <5.0.0`, `^3.12.0`, `1.x || 2.x` does not). */
+export function isVersionRange(range: string): boolean {
+  const sets = range.split("||").map((set) => set.trim().split(/\s+/).filter(Boolean));
+  return (
+    sets.length > 0 &&
+    sets.every(
+      (tokens) =>
+        tokens.length > 0 &&
+        tokens.every((token) => {
+          const m = /^(>=|<=|>|<|=|\^|~)?(\d+(?:\.\d+){0,2}(?:-[0-9A-Za-z.-]+)?)$/.exec(token);
+          return m !== null && parse(m[2]!) !== null;
+        }),
+    )
+  );
+}
+
 /** True when `version` satisfies `range`. Unparseable versions never satisfy. */
 export function versionSatisfies(version: string, range: string): boolean {
   const v = parse(version);

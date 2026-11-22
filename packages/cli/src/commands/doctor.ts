@@ -303,6 +303,8 @@ export function installedVersion(rootDir: string, pkg: string): string | null {
 
 interface PageAdapter {
   id: string;
+  /** Declared adapter protocol (agents before 0.5.0-alpha do not report it). */
+  protocol?: number | null;
   engineVersion: string | null;
   capabilities: string[];
   diagnostics: { level: string; code: string; message: string }[];
@@ -436,9 +438,20 @@ async function adapterChecks(
         details.push(`${known.pkg} ${version} is outside the tested range ${known.range}`);
       } else details.push(`${known.pkg} ${version} (tested range ${known.range})`);
     }
-    if (inPage) {
+    const rejected = inPage?.diagnostics.find((d) => d.code === "ADAPTER_PROTOCOL_UNSUPPORTED");
+    if (rejected) {
+      status = "fail";
+      details.push(`not registered: ${rejected.message}`);
+      fixes.push(
+        `Update ${MOTIONPR_PACKAGE}, or use a version of the adapter written for adapter protocol 2.`,
+      );
+    } else if (inPage) {
+      const about = [
+        ...(typeof inPage.protocol === "number" ? [`protocol ${inPage.protocol}`] : []),
+        ...(inPage.engineVersion ? [`runtime ${inPage.engineVersion}`] : []),
+      ];
       details.push(
-        `registered in the page${inPage.engineVersion ? ` (runtime ${inPage.engineVersion})` : ""}; capabilities: ${inPage.capabilities.join(", ") || "none"}`,
+        `registered in the page${about.length ? ` (${about.join(", ")})` : ""}; capabilities: ${inPage.capabilities.join(", ") || "none"}`,
       );
       for (const d of inPage.diagnostics) {
         details.push(`${d.code}: ${d.message}`);

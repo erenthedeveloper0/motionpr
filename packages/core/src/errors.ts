@@ -22,6 +22,7 @@ export type MotionprErrorCode =
   | "REPORT_NOT_FOUND"
   | "REPORT_FAILED"
   | "FILE_EXISTS"
+  | "ADAPTER_CHECK_FAILED"
   | "ABORTED"
   | "INTERNAL";
 

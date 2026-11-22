@@ -56,6 +56,10 @@ const ADAPTER_HINTS: Record<string, string> = {
   lenis: "Call motionprLenis.attach(lenis) after creating Lenis (see docs/integrations/lenis.md).",
 };
 
+const RECORD_HINT =
+  "The adapter broke the adapter protocol. `npx motionpr adapter check <page>` checks an adapter against every rule (docs/cli/adapter.md).";
+const PROTOCOL_HINT = `Update ${MOTIONPR_PACKAGE}, or use a version of the adapter written for adapter protocol 2 (docs/advanced/custom-adapters.md).`;
+
 /** Builds the adapter health table from what registered in the page and what was configured. */
 export function adapterStatuses(
   registered: Awaited<ReturnType<NonNullable<Window["__MOTIONPR_AGENT__"]>["adapterStatus"]>>,
@@ -63,6 +67,8 @@ export function adapterStatuses(
 ): AdapterStatus[] {
   const out: AdapterStatus[] = registered.map((a) => ({
     id: a.id,
+    // Agents before 0.5.0-alpha did not report it.
+    ...(a.protocol !== undefined ? { protocol: a.protocol } : {}),
     engineVersion: a.engineVersion,
     supportedRange: a.supportedRange,
     versionStatus:
@@ -618,9 +624,13 @@ async function runScenario(
         timeout: 5000,
       });
       await waitForReady(p, agent, config, diag);
-      const registered = await agent("adapters");
+      const registered = await agent("adapterStatus");
+      for (const status of registered) {
+        const rejected = status.diagnostics.find((d) => d.code === "ADAPTER_PROTOCOL_UNSUPPORTED");
+        if (rejected) diag({ ...rejected, hint: PROTOCOL_HINT });
+      }
       for (const adapter of config.adapters) {
-        if (!registered.some((r) => r.name === adapter.name)) {
+        if (!registered.some((r) => r.id === adapter.name)) {
           diag({
             level: adapter.required ? "error" : "warning",
             code: "ADAPTER_MISSING",
@@ -1208,7 +1218,8 @@ async function captureCheckpoint(
   const collected = await agent("collect");
   if (step.maxWindow !== undefined)
     await agent("configure", { maxWindowMs: config.capture.maxWindow });
-  for (const d of collected.diagnostics) checkpointDiag(d);
+  for (const d of collected.diagnostics)
+    checkpointDiag(d.code === "ADAPTER_RECORD_INVALID" ? { ...d, hint: RECORD_HINT } : d);
   if (collected.capped) {
     checkpointDiag({
       level: "warning",

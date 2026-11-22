@@ -8,6 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./protocol": "./src/protocol.ts",
+    "./adapter-contract": "./src/adapter-contract.ts",
+    "./semver": "./src/semver.ts",
     "./identity": "./src/identity.ts",
     "./easing": "./src/easing/index.ts",
     "./timeline": "./src/timeline.ts",

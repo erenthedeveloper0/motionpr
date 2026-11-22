@@ -398,9 +398,15 @@ export const adapterStatusSchema = z.object({
   versionStatus: z.enum(["supported", "untested", "unknown"]),
   /**
    * `active`: registered and reporting; `missing`: configured but never registered;
-   * `failed`: registered but threw while collecting.
+   * `failed`: registered but threw while collecting, or not registered because it declared an
+   * adapter protocol this MotionPR does not support (an `ADAPTER_PROTOCOL_UNSUPPORTED` error).
    */
   status: z.enum(["active", "missing", "failed"]),
+  /**
+   * The adapter protocol the adapter declared (1 when it declared none; null when it declared an
+   * unusable value). Absent for missing adapters and in captures made before `0.5.0-alpha`.
+   */
+  protocol: z.number().nullable().optional(),
   capabilities: z.array(z.string()),
   diagnostics: z.array(diagnosticSchema),
 });

@@ -61,6 +61,7 @@ export * from "./values.ts";
 export * from "./easing/index.ts";
 export * from "./identity.ts";
 export * from "./protocol.ts";
+export * from "./adapter-contract.ts";
 
 // Markdown summaries
 export { captureMarkdown, comparisonMarkdown, mdEscape } from "./markdown.ts";
@@ -69,4 +70,4 @@ export { captureMarkdown, comparisonMarkdown, mdEscape } from "./markdown.ts";
 export * from "./storage.ts";
 export { contentId, sha256 } from "./hash.ts";
 export { redactUrl, serializeJsonForHtml } from "./redact.ts";
-export { versionSatisfies } from "./semver.ts";
+export { isVersionRange, versionSatisfies } from "./semver.ts";

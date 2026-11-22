@@ -13,7 +13,7 @@ import {
   type Checkpoint,
   type Difference,
 } from "@motionpr/core";
-import { AGENT_SOURCE, launchBrowser, runCapture } from "@motionpr/capture";
+import { AGENT_SOURCE, checkAdapter, launchBrowser, runCapture } from "@motionpr/capture";
 import { compareCaptures } from "@motionpr/comparison";
 import { serveDirectory, type StaticServer } from "../../../capture/tests/helpers/static-server.ts";
 import { TEST_BROWSER } from "../../../capture/tests/helpers/browser.ts";
@@ -536,5 +536,19 @@ describe("GSAP adapter: targets inside shadow roots", () => {
       expect(r.samples.at(0)!.numeric.translateX).toBeCloseTo(0, 1);
       expect(r.samples.at(-1)!.numeric.translateX).toBeCloseTo(120, 0);
     }
+  });
+});
+
+describe("adapter conformance suite (adapter protocol 2)", () => {
+  // Its page starts a timeline, a stagger
+  // and an endless tween on load; every callback reports to the suite's hook.
+  it("passes every check that applies to the gsap adapter", async () => {
+    const report = await checkAdapter({ page: `${server.url}/conformance.html`, browser: browser });
+    expect(report.adapter).toMatchObject({ name: "gsap", protocol: 2 });
+    expect(
+      report.checks.filter((c) => c.status === "fail" || c.status === "warn"),
+      JSON.stringify(report.checks, null, 1),
+    ).toEqual([]);
+    expect(report.passed).toBe(true);
   });
 });
