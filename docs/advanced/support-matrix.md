@@ -19,8 +19,8 @@ description: Browsers, runtimes, engines and platforms MotionPR is tested with, 
 | Anime.js                            | Verified with 4.5.0 (range `>=4 <5`)               | 24 browser tests per engine, unit tests; v3 is not supported                                                      |
 | Lenis                               | Verified with 1.3.27 (range `>=1.1 <2`)            | 17 browser tests per engine; scroll motion, never replayed                                                        |
 | Native scroll containers            | Verified in all three engines                      | 12 browser tests per engine: steps, page-driven scrolls, settling, comparison                                     |
-| Shadow DOM (unreleased)             | Verified in all three engines                      | 12 browser tests per engine: open, closed, nested and declarative roots, containers, steps, ignore, comparison    |
-| Adapter protocol 2 (unreleased)     | Verified in all three engines                      | GSAP, Anime.js and Lenis pass the conformance suite; 25 browser tests per engine for the agent and the suite      |
+| Shadow DOM                          | Verified in all three engines                      | 12 browser tests per engine: open, closed, nested and declarative roots, containers, steps, ignore, comparison    |
+| Adapter protocol 2                  | Verified in all three engines                      | GSAP, Anime.js and Lenis pass the conformance suite; 25 browser tests per engine for the agent and the suite      |
 | macOS                               | Verified (arm64), all three engines                | Development machine                                                                                               |
 | Linux                               | Covered by the repository's CI, all three engines  | `ubuntu-latest`, one job per engine                                                                               |
 | Windows                             | Covered by the repository's CI, Chromium           | `windows-latest`: unit tests, Chromium browser suites, demo app, packaged CLI. Firefox and WebKit are not covered |
@@ -38,8 +38,8 @@ CI runs Chromium in the main job, Firefox and WebKit in a matrix, and Chromium a
 | Anime.js adapter                                                                       |       24 |      24 |     24 |
 | Lenis adapter                                                                          |       17 |      17 |     17 |
 | Native scroll containers                                                               |       12 |      12 |     12 |
-| Shadow DOM (unreleased, after `0.4.0-alpha`)                                           |       12 |      12 |     12 |
-| Adapter protocol 2 and the conformance suite (unreleased, after `0.4.0-alpha`)         |       25 |      25 |     25 |
+| Shadow DOM                                                                             |       12 |      12 |     12 |
+| Adapter protocol 2 and the conformance suite                                           |       25 |      25 |     25 |
 | CLI end to end                                                                         |       18 |      15 |     15 |
 | Demo app: every intended change, nothing else (e2e)                                    |       15 |      15 |     15 |
 

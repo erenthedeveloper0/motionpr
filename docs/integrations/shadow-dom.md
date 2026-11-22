@@ -5,7 +5,7 @@ description: Motion inside shadow roots is recorded, identified through each com
 
 # Shadow DOM and Web Components
 
-Unreleased, after `0.4.0-alpha`. Web components keep their markup in shadow roots, and the
+Since `0.5.0-alpha`. Web components keep their markup in shadow roots, and the
 browser keeps those apart from the page: `document.getAnimations()` leaves their animations out,
 and `scroll`, `transitionrun` and `animationstart` events stop at the root. MotionPR's agent asks
 every shadow root directly, so motion inside components is recorded, waited for, replayed and

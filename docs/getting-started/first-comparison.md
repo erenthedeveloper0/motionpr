@@ -16,7 +16,7 @@ git commit -m "Add MotionPR baseline"
 ```
 
 ```text
-◐ motionpr 0.4.0-alpha  ·  baseline accept
+◐ motionpr 0.5.0-alpha  ·  baseline accept
 
   Browser        Chromium
   New baseline   20261113-215354-f7d6 · 1 scenarios · 1 checkpoints · 1 animations · darwin · Chromium 158.0.8127.18
@@ -50,7 +50,7 @@ npx motionpr run
 ```
 
 ```text
-◐ motionpr 0.4.0-alpha  ·  run
+◐ motionpr 0.5.0-alpha  ·  run
 
   → 1 scenario from motionpr.config.mjs
   → Starting web server: npm run dev

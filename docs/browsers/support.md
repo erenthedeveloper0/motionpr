@@ -46,7 +46,7 @@ Everything below is covered by automated tests that run in each engine against a
 | Anime.js v4 adapter (timelines, staggers, WAAPI, eases)      | Verified | Verified | Verified |
 | Lenis adapter (scroll motion, velocity, reduced motion)      | Verified | Verified | Verified |
 | Native scroll containers                                     | Verified | Verified | Verified |
-| Motion inside shadow roots (unreleased)                      | Verified | Verified | Verified |
+| Motion inside shadow roots                                   | Verified | Verified | Verified |
 | GSAP with Lenis in one page                                  | Verified | Verified | Verified |
 | The demo app's 11 intended changes found, nothing else       | Verified | Verified | Verified |
 | CLI: capture, compare, run, baseline, report, doctor         | Verified | Verified | Verified |

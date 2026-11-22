@@ -1,6 +1,6 @@
 {
   "name": "@motionpr/comparison",
-  "version": "0.4.0-alpha",
+  "version": "0.5.0-alpha",
   "private": true,
   "description": "MotionPR comparison engine: animation matching, timing/easing/property/visual diffs, severity.",
   "type": "module",

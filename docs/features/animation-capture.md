@@ -17,7 +17,7 @@ finds native animations by polling `document.getAnimations()` every frame and by
 `Element.prototype.animate`, so short-lived animations are seen even if they finish between two
 frames. `document.getAnimations()` leaves shadow roots out, so the agent also polls every shadow
 root it knows: roots attached by script (open or closed; it wraps `attachShadow`) and declarative
-open roots (unreleased, after `0.4.0-alpha`; [Shadow DOM](../integrations/shadow-dom.md)).
+open roots (since `0.5.0-alpha`; [Shadow DOM](../integrations/shadow-dom.md)).
 
 | Found natively                     | Record type      | Engine label                                  |
 | ---------------------------------- | ---------------- | --------------------------------------------- |

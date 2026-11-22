@@ -1,6 +1,6 @@
 {
   "name": "@erenthedeveloper0/motionpr",
-  "version": "0.4.0-alpha",
+  "version": "0.5.0-alpha",
   "description": "Animation regression testing and motion inspection for CSS, WAAPI, GSAP, Anime.js and Lenis. Your code changed. See how your interface moves.",
   "keywords": [
     "animation",

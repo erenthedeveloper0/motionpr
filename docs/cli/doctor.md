@@ -62,7 +62,7 @@ is something to do. `ok` is `false` when any check failed. Shortened real output
   "ok": true,
   "checks": [
     { "name": "Node.js", "status": "ok", "detail": "v24.21.0" },
-    { "name": "MotionPR", "status": "ok", "detail": "0.4.0-alpha" },
+    { "name": "MotionPR", "status": "ok", "detail": "0.5.0-alpha" },
     { "name": "Playwright", "status": "ok", "detail": "playwright-core 1.65.0" },
     { "name": "Config", "status": "ok", "detail": "motionpr.config.mjs (1 scenario)" },
     {

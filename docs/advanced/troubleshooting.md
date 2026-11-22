@@ -144,7 +144,7 @@ npx motionpr report --regenerate
 
 ## Known capture limitations
 
-- **Motion inside a web component is missing** (unreleased, after `0.4.0-alpha`): shadow roots
+- **Motion inside a web component is missing** (since `0.5.0-alpha`): shadow roots
   attached by script (open or closed), declarative open roots and nested roots are observed. A
   declarative closed root (`<template shadowrootmode="closed">`) is invisible to scripts, and so
   to MotionPR ([Shadow DOM](../integrations/shadow-dom.md#which-shadow-roots)). With
@@ -160,7 +160,7 @@ npx motionpr report --regenerate
   `0.4.0-alpha`: the baseline was captured before MotionPR looked inside shadow roots. Accept a
   new baseline once ([Shadow DOM](../integrations/shadow-dom.md#upgrading-from-040-alpha)).
 - **Scroll containers** (since `0.4.0-alpha`): containers inside iframes are not recorded as
-  scroll motion. Inside shadow roots they are since the unreleased version after `0.4.0-alpha`.
+  scroll motion. Inside shadow roots they are since `0.5.0-alpha`.
 - **`wheel: … is outside the viewport`**: a `wheel` step with `selector` points at an element that
   is not on screen. Add a `scrollIntoView` step for it first; MotionPR does not scroll on its own.
 - **`wheel: … is covered by …`**: another element (an overlay, a sticky header) sits over the

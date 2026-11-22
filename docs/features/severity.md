@@ -71,7 +71,7 @@ becomes **uncertain** (and removal/addition too, since the element may simply ha
 
 ### Captures that did not look inside shadow roots
 
-Unreleased, after `0.4.0-alpha`. Captures made with `0.4.0-alpha` or earlier did not record CSS
+Since `0.5.0-alpha`. Captures made with `0.4.0-alpha` or earlier did not record CSS
 motion or scroll containers inside shadow roots, and identified the rest there without its host.
 Against such a capture, unless the rule's severity is set:
 

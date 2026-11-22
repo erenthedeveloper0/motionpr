@@ -222,7 +222,7 @@ describe("docs", () => {
 describe("versions", () => {
   it("keeps every package and MOTIONPR_VERSION on the public package's version", () => {
     const version = (JSON.parse(read("packages/cli/package.json")) as { version: string }).version;
-    expect(version).toBe("0.4.0-alpha");
+    expect(version).toBe("0.5.0-alpha");
     for (const dir of [
       "core",
       "capture",

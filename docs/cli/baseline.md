@@ -51,7 +51,7 @@ npx motionpr baseline status
 ```
 
 ```text
-◐ motionpr 0.4.0-alpha  ·  baseline status
+◐ motionpr 0.5.0-alpha  ·  baseline status
 
   Chromium  20261113-215354-f7d6 · 1 scenarios · Chromium 158.0.8127.18 · 2026-11-13T21:53:56.501Z
             .motionpr/baseline/chromium

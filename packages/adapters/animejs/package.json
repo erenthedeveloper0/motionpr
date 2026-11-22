@@ -1,6 +1,6 @@
 {
   "name": "@motionpr/animejs",
-  "version": "0.4.0-alpha",
+  "version": "0.5.0-alpha",
   "private": true,
   "description": "MotionPR Anime.js v4 adapter (published as @erenthedeveloper0/motionpr/animejs).",
   "type": "module",

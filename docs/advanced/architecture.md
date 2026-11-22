@@ -48,14 +48,14 @@ unless `allowCrossBrowser` is set, in which case `ENGINE_DEPENDENT_CHANGES` are 
    animations and non-composed events (`scroll`, `transitionrun`, `animationstart`) to
    themselves, so the agent wraps `attachShadow`, finds declarative open roots when it scans the
    page, and polls and listens to each root directly (`packages/capture/src/agent/shadow.ts`,
-   unreleased, after `0.4.0-alpha`). Elements in a root are identified through its host.
+   since `0.5.0-alpha`). Elements in a root are identified through its host.
 2. **Adapters** for JavaScript engines (GSAP, Anime.js, Lenis, custom) register with the agent
    from inside the app. They implement one contract (`MotionprAdapter` in
    `@motionpr/core/protocol`): `collect()` animations, and optionally `collectTimelines()`,
    `collectScroll()`, `claims()` for native animations their engine created, deterministic
    `beginReplay()` / `seek()` / `endReplay()`, `scrollStates()` for settle detection,
    `scrollTo()` for scroll steps and `diagnostics()`. Their public handles add `dispose()`. The
-   contract is adapter protocol 2 (unreleased, after `0.4.0-alpha`); the agent checks what
+   contract is adapter protocol 2 (since `0.5.0-alpha`); the agent checks what
    adapters report against it (below).
 3. **Windows.** Each checkpoint closes a window that opened at the previous checkpoint. The
    window origin is the first motion after the first interaction: the earliest animation start

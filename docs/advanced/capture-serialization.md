@@ -88,7 +88,7 @@ older captures, which read unchanged; `0.3.0-alpha` ignores `scrollLink`. Motion
 recorded no scroll containers; `0.3.0-alpha` ignores it. Scroll container records use
 the existing `ScrollMotionRecord` shape (`wrapper` set, `sessionId: "container"`).
 
-The unreleased version after `0.4.0-alpha` adds optional `element.shadowHost` (the host's key, for
+MotionPR 0.5 adds optional `element.shadowHost` (the host's key, for
 elements inside shadow roots) and `settings.shadowRoots`, which reads as `false` when it is
 missing: older captures did not look inside shadow roots, and a comparison treats what they
 could not see as `uncertain` ([Shadow DOM](../integrations/shadow-dom.md#upgrading-from-040-alpha)).

@@ -1,20 +1,20 @@
 # Roadmap
 
-What comes after `0.4.0-alpha`, roughly in order. Nothing under "Towards a beta" or "Later" is
+What comes after `0.5.0-alpha`, roughly in order. Nothing under "Towards a beta" or "Later" is
 built yet; what is built is in [the changelog](CHANGELOG.md) and
 [Limitations](docs/advanced/limitations.md). Order changes with what users run into; open an
 issue to argue for something.
 
 ## Done
 
-- **Adapter protocol 2** (unreleased, after `0.4.0-alpha`). The adapter contract for custom
+- **Adapter protocol 2** (`0.5.0-alpha`). The adapter contract for custom
   engines is frozen until `1.0` (only optional additions; a breaking change gets a new number
   while protocol 2 keeps working), adapters declare `protocol: 2`, and protocol 1 adapters keep
   working. The agent checks what adapters report: an entry that would make a capture unreadable
   is left out with a diagnostic. The conformance suite, `motionpr adapter check` (and
   `checkAdapter()`), runs 21 checks against an adapter in a real browser; GSAP, Anime.js and Lenis
   pass it in all three engines. See [Custom adapters](docs/advanced/custom-adapters.md).
-- **Shadow DOM** (unreleased, after `0.4.0-alpha`). Motion inside open, closed, nested and
+- **Shadow DOM** (`0.5.0-alpha`). Motion inside open, closed, nested and
   declarative shadow roots is recorded, waited for and replayed; elements there are identified
   through their host (`test-id:plan-pro >> motionpr-id:glow`) with selectors in Playwright's
   chaining syntax that re-find re-rendered elements; scroll containers inside roots are recorded;

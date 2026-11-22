@@ -40,7 +40,7 @@ The approved baseline in `.motionpr/baseline/` is not ignored: it is meant to be
 This is what `npx motionpr init --yes` printed and wrote in a Vite project:
 
 ```text
-◐ motionpr 0.4.0-alpha  ·  init
+◐ motionpr 0.5.0-alpha  ·  init
 
   ✔ Created motionpr.config.ts
   ✔ Created .motionpr/.gitignore

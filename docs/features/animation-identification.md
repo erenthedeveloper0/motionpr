@@ -35,7 +35,7 @@ The record id combines the element key, the animation type and its name:
 
 ### Inside shadow roots
 
-Unreleased, after `0.4.0-alpha`. An element inside a shadow root is identified within that root by
+Since `0.5.0-alpha`. An element inside a shadow root is identified within that root by
 the same rules (an `id` or a label only has to be unique there), and its key starts with its
 host's key: `test-id:plan-pro >> motionpr-id:glow`, or
 `test-id:plan-pro >> path:#shadow-root>div:nth-of-type(2)` for a path from the top of the root.

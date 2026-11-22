@@ -53,7 +53,7 @@ a hidden one.
 - **CSS scroll-driven animations** are recorded as metadata only.
 - **Scroll containers** (since `0.4.0-alpha`): native overflow containers are
   recorded, but not inside iframes (their scroll events do not reach the page's document), and
-  inside shadow roots only since the unreleased version after `0.4.0-alpha`
+  inside shadow roots only since `0.5.0-alpha`
   ([Shadow DOM](../integrations/shadow-dom.md#scroll-containers)). A container added, or
   starting to overflow, after its window opened is `partial`.
   `scrollTo` steps drive the first attached Lenis instance or a native container, not a Lenis
@@ -66,7 +66,7 @@ a hidden one.
   peak velocity in MotionPR's tests; those differences are `uncertain`. Positions, duration and
   settling are stable. Headless engines also move a native scroller once per `wheel` event, so
   the curve of a native `wheel` scroll follows the step's `interval`.
-- **Shadow DOM** (unreleased, after `0.4.0-alpha`): open and closed roots attached by script,
+- **Shadow DOM** (since `0.5.0-alpha`): open and closed roots attached by script,
   declarative open roots and nested roots are observed; declarative closed roots, the browser's
   own shadow trees (form controls, media) and iframes are not. Steps and screenshot masks do not
   reach into closed roots, so an input inside one is not masked
@@ -89,7 +89,7 @@ a hidden one.
 
 - The capture format may still change between minor versions; older captures are migrated when
   they are read. Files written by a newer MotionPR are rejected with an actionable error.
-- Adapter protocol 2 (unreleased, after `0.4.0-alpha`) is frozen until 1.0: it only gains
+- Adapter protocol 2 (since `0.5.0-alpha`) is frozen until 1.0: it only gains
   optional members. Scroll tracks from custom adapters are recorded as `native` scroll motion (the
   capture format knows Lenis and native scrolling), so native scrolling's uneven-delivery grading
   applies to them.
