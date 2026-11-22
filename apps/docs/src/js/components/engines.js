@@ -4,7 +4,7 @@
 // single demo inside a documentation page.
 import { DUR, EASE, gsap, reducedMotion } from "../lib/motion.js";
 import { loadSiteData } from "../lib/data.js";
-import { h, watchVisibility } from "../lib/dom.js";
+import { edgeFades, h, watchVisibility } from "../lib/dom.js";
 
 export const ENGINE_SCENARIOS = {
   css: {
@@ -323,6 +323,17 @@ export async function mount(el, ctx, name) {
   const tabs = [...el.querySelectorAll('[role="tab"]')];
   const panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));
   const indicator = el.querySelector(".engines__indicator");
+  const list = indicator.parentElement;
+  // The tab list scrolls sideways on phones and the indicator scrolls with it: place it by the
+  // tab's offset in the list, not by where the tab is on screen.
+  const under = (tab) => ({ x: tab.offsetLeft, width: tab.offsetWidth });
+  const reveal = (tab, smooth) => {
+    const pad = 24;
+    const left = tab.offsetLeft - pad;
+    const right = tab.offsetLeft + tab.offsetWidth + pad - list.clientWidth;
+    const to = list.scrollLeft > left ? left : list.scrollLeft < right ? right : null;
+    if (to !== null) list.scrollTo({ left: to, behavior: smooth ? "smooth" : "auto" });
+  };
   const demos = new Map();
   const ensure = async (i) => {
     const engine = tabs[i].dataset.engine;
@@ -338,10 +349,9 @@ export async function mount(el, ctx, name) {
       t.tabIndex = i === j ? 0 : -1;
       panels[j].hidden = i !== j;
     });
-    if (focus) tabs[i].focus();
-    const box = tabs[i].getBoundingClientRect();
-    const base = tabs[i].parentElement.getBoundingClientRect();
-    const to = { x: box.left - base.left, width: box.width };
+    if (focus) tabs[i].focus({ preventScroll: true });
+    reveal(tabs[i], animate && !reducedMotion());
+    const to = under(tabs[i]);
     if (animate && !reducedMotion()) {
       gsap.to(indicator, { ...to, duration: DUR.slow, ease: EASE.out });
       gsap.fromTo(
@@ -366,6 +376,10 @@ export async function mount(el, ctx, name) {
     },
     { signal: ctx.signal },
   );
+  // Build the first tab's demo now, while the section is still off screen: it is most of the
+  // panel's height, and building it on arrival pushed the next section down in view. It plays
+  // when the section is seen.
+  void ensure(0);
   let first = true;
   ctx.track(
     watchVisibility(
@@ -379,12 +393,11 @@ export async function mount(el, ctx, name) {
       "-15% 0px",
     ),
   );
+  ctx.track(edgeFades(list));
   const ro = new ResizeObserver(() => {
     const i = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
     if (i < 0) return;
-    const box = tabs[i].getBoundingClientRect();
-    const base = tabs[i].parentElement.getBoundingClientRect();
-    gsap.set(indicator, { x: box.left - base.left, width: box.width });
+    gsap.set(indicator, under(tabs[i]));
   });
   ro.observe(el);
   ctx.track(ro);

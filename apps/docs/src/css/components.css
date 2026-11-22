@@ -186,6 +186,12 @@
 .tl-dur {
   fill: var(--text-2);
 }
+.instrument__timeline .tl-dur {
+  paint-order: stroke;
+  stroke: rgb(11 11 14);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
 .tl-playhead {
   stroke: var(--paper);
   stroke-width: 1.25;

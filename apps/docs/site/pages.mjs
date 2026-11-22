@@ -272,18 +272,19 @@ export function landingBody({ up, version, summary, engines }) {
 <pre class="terminal__body"><code><span class="t-dim">◐ motionpr 0.5.0-alpha  ·  run</span>
 
   <span class="t-dim">→</span> 1 scenario from motionpr.config.mjs
-  <span class="t-dim">→</span> Web server ready at http://localhost:4173 (263 ms)
-  <span class="t-ok">✔</span> menu-open@default  1 checkpoint · 1 animation · 2.0s
+  <span class="t-dim">→</span> Web server ready at http://localhost:4173 (268 ms)
+  <span class="t-ok">✔</span> menu-open@default  1 checkpoint · 1 animation · 2.3s
 
-  <span class="t-dim">Baseline 20261113-215354-f7d6  →  Current 20261113-215403-2778</span>
+  <span class="t-dim">Baseline 20261122-135712-b63d (Chromium 158.0.8127.18)  →  Current 20261122-135718-a5ac (Chromium 158.0.8127.18)</span>
 
   <span class="t-crit">✖</span> menu-open@default  1 critical · 1 warning · 1 info
-      <span class="t-crit">✖</span> Duration 300ms → 600ms (+300ms, +100%)
-      <span class="t-warn">▲</span> Easing cubic-bezier(0.16, 1, 0.3, 1) → ease-in-out
-      <span class="t-info">●</span> translateX path deviates up to 195.3px at 26% progress
+      <span class="t-crit">✖</span> <span class="t-dim">open: </span>css-transition “transform” on nav-panel: Duration 300ms → 600ms (+300ms, +100%)
+      <span class="t-warn">▲</span> <span class="t-dim">open: </span>css-transition “transform” on nav-panel: Easing cubic-bezier(0.16, 1, 0.3, 1) → ease-in-out (max deviation 70…
+      <span class="t-info">●</span> <span class="t-dim">open: </span>css-transition “transform” on nav-panel: translateX path deviates up to 195.3px at 26% progress
 
-  Result  <span class="t-crit">FAILED</span>  fail on: critical
-  <span class="t-dim">exit code 1</span></code></pre>
+  1 matched · 1 changed · 0 added · 0 removed · 0 unchanged
+
+  Result  <span class="t-crit">FAILED</span>  fail on: critical  1 critical · 1 warning · 1 info</code></pre>
     </figure>
   </div>
 </section>

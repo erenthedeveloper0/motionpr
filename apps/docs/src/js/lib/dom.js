@@ -57,3 +57,24 @@ export function watchVisibility(el, fn, rootMargin = "120px") {
   io.observe(el);
   return () => io.disconnect();
 }
+
+/**
+ * Marks which edges of a sideways-scrolling element have more content past them (`fade-start`,
+ * `fade-end`), so the stylesheet fades only those: an edge that ends the content stays sharp.
+ * Returns a function that stops watching.
+ */
+export function edgeFades(el) {
+  const update = () => {
+    const max = el.scrollWidth - el.clientWidth;
+    el.classList.toggle("fade-start", el.scrollLeft > 2);
+    el.classList.toggle("fade-end", max > 2 && el.scrollLeft < max - 2);
+  };
+  el.addEventListener("scroll", update, { passive: true });
+  const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+  ro?.observe(el);
+  update();
+  return () => {
+    el.removeEventListener("scroll", update);
+    ro?.disconnect();
+  };
+}

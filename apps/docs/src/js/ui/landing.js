@@ -2,6 +2,7 @@
 // ScrollTrigger, plus each section's own entrance. Lenis is created here and destroyed when the
 // visitor leaves the page, so documentation pages keep native scrolling.
 import Lenis from "lenis";
+import { edgeFades } from "../lib/dom.js";
 import { DUR, EASE, ScrollTrigger, gsap, reducedMotion } from "../lib/motion.js";
 
 let lenis = null;
@@ -28,6 +29,9 @@ export function mountLanding(shell) {
       );
     });
   }
+
+  // Install commands scroll inside their pill on phones: fade only the edge with more to read.
+  for (const code of shell.querySelectorAll(".install code")) cleanups.push(edgeFades(code));
 
   // Section titles: the muted second line slides in from the side the timeline runs to.
   const ctx = gsap.context(() => {

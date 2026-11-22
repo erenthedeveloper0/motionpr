@@ -8,6 +8,24 @@ import { DUR, EASE, STAGGER, gsap, reducedMotion } from "../lib/motion.js";
 /** Delay between the hero's lines, in seconds. */
 const HERO_STAGGER = 0.09;
 
+/**
+ * The eyebrow's letters close in to the spacing the stylesheet gives it at this width (narrower on
+ * phones). They start only as far apart as still fits on one line: a line that wrapped during the
+ * entrance pushed the whole hero down, and it jumped back up when the spacing was cleared.
+ */
+function eyebrowSpacing(el) {
+  const style = getComputedStyle(el);
+  const em = parseFloat(style.fontSize) || 12;
+  const rest = parseFloat(style.letterSpacing) || 0;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const text = range.getBoundingClientRect();
+  const oneLine = text.height < (parseFloat(style.lineHeight) || em * 1.4) * 1.5;
+  const room = Math.max(0, el.clientWidth - text.width) * 0.9;
+  const extra = oneLine ? Math.min(0.12 * em, room / Math.max(1, el.textContent.length)) : 0;
+  return { from: `${rest + extra}px`, to: `${rest}px` };
+}
+
 export function enter(shell) {
   if (reducedMotion()) {
     shell.querySelectorAll("[data-reveal], [data-hero]").forEach((el) => (el.style.opacity = ""));
@@ -31,12 +49,16 @@ export function enter(shell) {
       { yPercent: 0, y: 0, duration: 1.15, stagger: HERO_STAGGER },
       0.15,
     );
-    tl.fromTo(
-      shell.querySelector('[data-hero="eyebrow"]'),
-      { opacity: 0, y: 8, letterSpacing: "0.32em" },
-      { opacity: 1, y: 0, letterSpacing: "0.2em", duration: 1.1, clearProps: "letterSpacing" },
-      0.02,
-    );
+    const eyebrow = shell.querySelector('[data-hero="eyebrow"]');
+    if (eyebrow) {
+      const spacing = eyebrowSpacing(eyebrow);
+      tl.fromTo(
+        eyebrow,
+        { opacity: 0, y: 8, letterSpacing: spacing.from },
+        { opacity: 1, y: 0, letterSpacing: spacing.to, duration: 1.1, clearProps: "letterSpacing" },
+        0.02,
+      );
+    }
     tl.fromTo(
       shell.querySelectorAll('[data-hero="lede"], [data-hero="actions"], [data-hero="install"]'),
       { opacity: 0, y: 14 },
