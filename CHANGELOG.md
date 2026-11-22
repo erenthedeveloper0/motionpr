@@ -10,9 +10,12 @@ prerelease may change the capture format or the API, and every such change is li
 Motion inside shadow roots is recorded, identified through each component's host and compared
 like the rest of the page, in open, closed, nested and declarative roots (roadmap: Shadow DOM).
 `scroll` and `scrollTo` steps now find their elements with Playwright, like every other step, so
-their selectors reach into shadow roots too. Capture schema and comparison schema stay at version
-2, and the adapter protocol at 1: the new fields are optional or have defaults, so 0.4 captures
-and custom adapters work unchanged.
+their selectors reach into shadow roots too. The adapter contract is frozen as adapter protocol 2,
+with a conformance suite that custom adapters can run (`motionpr adapter check`), and what
+adapters report is checked before it is written, so one malformed entry no longer makes a capture
+unreadable (roadmap: adapter protocol 2). Capture schema and comparison schema stay at version 2:
+the new fields are optional or have defaults, so 0.4 captures read unchanged, and custom adapters
+written for 0.4 or earlier keep working as protocol 1 adapters.
 
 ### Added
 
@@ -49,6 +52,37 @@ and custom adapters work unchanged.
   under `scrollTo`, `wheel` and the page, step selectors, two runs of one build, a changed
   duration and stagger, an old baseline), a GSAP and an Anime.js test with targets inside shadow
   roots, and unit tests for the comparison, the schema and selector parsing.
+- **Adapter protocol 2.** `PROTOCOL_VERSION` is `2` and frozen until `1.0`: it changes only by
+  optional additions whose absence keeps today's behaviour, and a change that would break a
+  protocol 2 adapter gets a new number while the agent keeps accepting 2. Adapters declare it with
+  `protocol: 2` (the GSAP, Anime.js and Lenis adapters do). The agent accepts protocols 1 and 2
+  (`SUPPORTED_PROTOCOLS`); an adapter that declares another is not registered, and the scenario
+  gets an `ADAPTER_PROTOCOL_UNSUPPORTED` error (instead of `ADAPTER_MISSING`) with a `failed` row
+  in the adapter table.
+- **`motionpr adapter check <page>`**, the adapter conformance suite. It loads a page that uses
+  the adapter in Chromium, Firefox or WebKit (`--browser all`) and runs 21 checks: registration,
+  protocol, metadata and capabilities; every entry `collect()` and `collectTimelines()` return;
+  `collect()` without side effects; `isAnimating()` against the entries' own timing; `seek()` at
+  0 %, 50 % and 100 % of each animation, twice; values held across frames during replay;
+  `endReplay()` against a snapshot; no engine callbacks during replay (pages report them to
+  `window.__MOTIONPR_CHECK__`); `seekProgress()`; `beginWindow()`; `scrollTo()` and
+  `collectScroll()`; `claims()` against a foreign Web Animation; `diagnostics()`; the page without
+  MotionPR; and a real capture, which must validate without adapter diagnostics. A local HTML file
+  is served from its folder. Exit `1` when a check fails, `--json` for the report. The same suite
+  is `checkAdapter()` in the API, with `ADAPTER_CHECKS` (stable check ids) and the
+  `AdapterCheckOptions`, `AdapterCheckReport`, `AdapterCheckResult`, `AdapterCheckStatus`,
+  `AdapterCheckSubject` and `AdapterCheckId` types.
+- `adapters[].protocol` in captures (the protocol each adapter declared), and `motionpr doctor`
+  shows it for every registered adapter and fails an adapter the agent refused.
+- `PROTOCOL_VERSION`, `SUPPORTED_PROTOCOLS`, `AdapterClaim` and `ScrollState` are exported for
+  typed custom adapters.
+- [Custom adapters](docs/advanced/custom-adapters.md) is now the protocol 2 reference (members,
+  capabilities, entry fields, rules, checking an adapter), with a new page for
+  [`motionpr adapter`](docs/cli/adapter.md).
+- Browser tests in Chromium, Firefox and WebKit: the agent with protocol 1, 2 and 3 adapters and
+  invalid entries; the suite against a small engine whose `?bug=` switches each break one rule
+  (every one fails the check that names it, and nothing else); the GSAP, Anime.js and Lenis
+  adapters pass it; the CLI command's exit codes and JSON. Unit tests for every contract rule.
 
 ### Changed
 
@@ -71,6 +105,15 @@ and custom adapters work unchanged.
   (MotionPR 0.4.0-alpha or earlier), so this is uncertain; capture it again to compare this
   animation._ A severity set for the rule still applies. A ScrollTrigger scroller inside a shadow
   root counts as the same scroller when only its host is missing from the old key.
+- **What adapters report is checked.** An animation, timeline or scroll track whose fields do not
+  have the documented types is left out of the capture with an `ADAPTER_RECORD_INVALID` warning
+  that names the field (and points to `motionpr adapter check`); the adapter's other entries are
+  kept. An entry whose id was already reported in the same `collect()` is left out too. Missing
+  nullable fields (`name`, `target`, `startTime`, `duration`, a timeline's `name`, `startTime`
+  and `progress`, a scroll track's `wrapper`) read as `null`. Malformed `diagnostics()` entries
+  are left out with `ADAPTER_DIAGNOSTICS_INVALID`, and a `version`, `supportedRange` or
+  capability that is not a string is ignored.
+- The agent's `protocol` is `2`.
 
 ### Fixed
 
@@ -84,6 +127,10 @@ and custom adapters work unchanged.
   roots kept running.
 - `scroll` and `scrollTo` steps could not reach elements inside shadow roots, and failed on the
   Playwright selector syntax that the documentation allowed for every step (`text=…`).
+- One malformed entry from a custom adapter (a `duration` given as a string, an unknown
+  `direction`, a missing `name`, a `meta` value that is an object) was written into the capture,
+  and the whole capture then failed validation: `compare`, `run` and `baseline accept` refused
+  it. A malformed diagnostic or a non-string engine version did the same.
 
 ### Upgrading
 
@@ -94,6 +141,11 @@ records, and `uncertain` changes on the records paired by key, until a new basel
 nothing changes for pages without shadow roots. A `scroll` or `scrollTo` step whose selector
 matches nothing now fails after `capture.actionTimeout` (10 s by default) instead of at once.
 
+Custom adapters need no change: without `protocol` they are protocol 1 adapters, which have the
+same members. Run `npx motionpr adapter check <page>` and declare `protocol: 2` once it passes.
+Entries that used to make a capture unreadable are now left out with an `ADAPTER_RECORD_INVALID`
+warning instead.
+
 ### Known limitations
 
 - Declarative closed shadow roots, the browser's own shadow trees (form controls, media) and
@@ -103,6 +155,10 @@ matches nothing now fails after `capture.actionTimeout` (10 s by default) instea
 - Elements slotted into a component are identified in the page's DOM, not through the host.
 - While capturing, the agent polls every shadow root once per frame: 1,000 roots took 0.3 ms per
   frame in Firefox, 0.6 ms in Chromium and 1 ms in WebKit.
+- Scroll tracks from custom adapters are recorded as `native` scroll motion (the capture format
+  knows Lenis and native scrolling).
+- The conformance suite has no steps: the page must start the engine's animations when it loads.
+  Replay callbacks are checked only when the page reports them, and one adapter is checked per run.
 
 ## [0.4.0-alpha] — 2026-11-20
 

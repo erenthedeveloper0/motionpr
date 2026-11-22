@@ -132,6 +132,28 @@ with the launch settings that belong to it, and throws `BROWSER_NOT_INSTALLED`,
 starts another engine instead. `isBrowserInstalled` tells whether Playwright's build of an
 engine is downloaded (for headless Chromium, the headless shell counts).
 
+### `checkAdapter(options)`
+
+The adapter conformance suite behind [`motionpr adapter check`](../cli/adapter.md) (since
+`0.5.0-alpha`): checks an adapter against [adapter protocol 2](custom-adapters.md#protocol-2) in a
+real browser and resolves to an `AdapterCheckReport`.
+
+```ts
+const report = await checkAdapter({ page: "./test/motion.html", browserName: "webkit" });
+report.passed; // no check failed (warnings and skipped checks do not fail)
+report.checks; // [{ id, title, status: "pass" | "warn" | "fail" | "skip", summary, details }]
+```
+
+`AdapterCheckOptions`: `page` (an `http(s)` URL, or a local HTML file served from its folder),
+`adapter` (the name; default the only one the page registers), `script` (injected before page
+scripts), `browserName` (default `chromium`), `browser` (reuse a Playwright `Browser`),
+`headless`, `timeout` (ms, default 10 000), `cwd`. `AdapterCheckReport`: `page`, `url`,
+`browser`, `browserVersion`, `adapter` (an `AdapterCheckSubject`: `name`, `protocol`, `version`,
+`supportedRange`, `capabilities`; `null` when nothing registered), `checks`
+(`AdapterCheckResult[]`, in `ADAPTER_CHECKS` order), `passed`, `counts`. Throws
+`ADAPTER_CHECK_FAILED` when the page cannot be loaded, or several adapters register and none is
+named; every other problem is a failed check.
+
 ## Browsers and storage
 
 | Export                                   | Description                                                                               |
@@ -200,6 +222,11 @@ Window-relative interval of an `AnimationRecord` (`start`, `windowStart`, `windo
 
 - `MOTIONPR_VERSION`: the package version.
 - `SEVERITY_RULES`: rule names accepted by `comparison.severity`.
+- `PROTOCOL_VERSION`: the adapter protocol this MotionPR implements (`2`), and
+  `SUPPORTED_PROTOCOLS`: the ones its agent accepts from adapters (`[1, 2]`). See
+  [Custom adapters](custom-adapters.md#protocol-2).
+- `ADAPTER_CHECKS`: the conformance suite's checks (`{ id, title }`, in report order; the ids,
+  `AdapterCheckId`, are stable).
 
 ## Types
 
@@ -216,7 +243,10 @@ Comparison data: `ComparisonResult`, `ScenarioComparison`, `CheckpointComparison
 
 Report: `ReportData`. Errors: `MotionprErrorCode`.
 
-Adapters: `MotionprAdapter`, `AdapterAnimation`; see [Custom adapters](custom-adapters.md).
+Adapters: `MotionprAdapter`, `AdapterAnimation`, `AdapterClaim` (what `claims()` returns),
+`ScrollState` (what `scrollStates()` reports); see [Custom adapters](custom-adapters.md). The
+conformance suite: `AdapterCheckOptions`, `AdapterCheckReport`, `AdapterCheckResult`,
+`AdapterCheckStatus`, `AdapterCheckSubject`, `AdapterCheckId`.
 
 ## Example: a custom CI step
 

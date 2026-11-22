@@ -68,7 +68,8 @@ description, not a workaround.
    per-target timing private, record provenance (`declared` / `observed` / `inferred` /
    `unavailable`) instead of guessing, never re-fire application callbacks, never change engine
    options, and leave every engine exactly as they found it after replay. Each adapter change
-   comes with a lifecycle test.
+   comes with a lifecycle test, and the adapter keeps passing the conformance suite
+   (`motionpr adapter check`, run by its integration tests in every engine).
 4. **Scroll is observed, never replayed.** Replaying scroll would re-run the application's
    scroll handlers. Scroll motion is a `ScrollMotionRecord`, not an animation with a duration.
 5. **Every bug fix gets a regression test**, written to fail against the bug first.

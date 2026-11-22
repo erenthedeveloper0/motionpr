@@ -148,6 +148,9 @@ describe("docs", () => {
     const baseline = read("docs/cli/baseline.md");
     expect(baseline).toContain("## `motionpr baseline accept`");
     expect(baseline).toContain("## `motionpr baseline status`");
+    const adapter = read("docs/cli/adapter.md");
+    expect(adapter).toContain("# `motionpr adapter`");
+    expect(adapter).toContain("## `motionpr adapter check`");
     const config = markdownFiles("docs/configuration").map(read).join("\n");
     for (const key of [
       "output.keep",
@@ -162,6 +165,19 @@ describe("docs", () => {
       "MOTIONPR_BROWSER_PATH",
     ]) {
       expect(config, key).toContain(key);
+    }
+  });
+
+  it("documents every check of the adapter conformance suite", async () => {
+    const { ADAPTER_CHECKS } = await import("../../packages/core/src/adapter-contract.ts");
+    const doc = read("docs/cli/adapter.md");
+    expect(ADAPTER_CHECKS.map((c) => c.id).filter((id) => !doc.includes(`| \`${id}\` `))).toEqual(
+      [],
+    );
+    const program = read("packages/cli/src/program.ts");
+    for (const option of ["--adapter <name>", "--script <file>", "--timeout <ms>", "--headed"]) {
+      expect(program, option).toContain(`"${option}"`);
+      expect(doc, option).toContain(`\`${option}\``);
     }
   });
 

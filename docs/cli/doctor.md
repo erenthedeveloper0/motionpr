@@ -43,7 +43,10 @@ On Linux, a launch that fails for missing system libraries suggests
 For each configured adapter (`gsap`, `animejs`, `lenis`), `doctor` reports the installed package
 version and whether it is inside the tested range. When the app is reachable, it opens the first
 scenario with MotionPR's agent installed and checks that the adapter actually **registered in
-the page**. An installed package alone is never reported as working.
+the page**, with the [adapter protocol](../advanced/custom-adapters.md#protocol-2) it declares. An
+installed package alone is never reported as working, and an adapter that declares a protocol this
+MotionPR does not support fails the check. To check a custom adapter in depth, use
+[`motionpr adapter check`](adapter.md).
 
 ## JSON
 

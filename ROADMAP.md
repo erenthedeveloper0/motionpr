@@ -7,6 +7,13 @@ issue to argue for something.
 
 ## Done
 
+- **Adapter protocol 2** (unreleased, after `0.4.0-alpha`). The adapter contract for custom
+  engines is frozen until `1.0` (only optional additions; a breaking change gets a new number
+  while protocol 2 keeps working), adapters declare `protocol: 2`, and protocol 1 adapters keep
+  working. The agent checks what adapters report: an entry that would make a capture unreadable
+  is left out with a diagnostic. The conformance suite, `motionpr adapter check` (and
+  `checkAdapter()`), runs 21 checks against an adapter in a real browser; GSAP, Anime.js and Lenis
+  pass it in all three engines. See [Custom adapters](docs/advanced/custom-adapters.md).
 - **Shadow DOM** (unreleased, after `0.4.0-alpha`). Motion inside open, closed, nested and
   declarative shadow roots is recorded, waited for and replayed; elements there are identified
   through their host (`test-id:plan-pro >> motionpr-id:glow`) with selectors in Playwright's
@@ -39,9 +46,8 @@ issue to argue for something.
 ## Towards a beta
 
 1. **Example projects.** Small, runnable projects (plain HTML, React with GSAP, Astro with Lenis)
-   with their scenarios and committed baselines, tested in CI like the demo app.
-2. **Adapter protocol 2.** Freeze the adapter contract for custom engines before `1.0`, with a
-   conformance suite adapters can run.
+   with their scenarios and committed baselines, tested in CI like the demo app. The baselines
+   have to be captured where CI runs (Linux), so this starts with a CI job that captures them.
 
 ## Later
 

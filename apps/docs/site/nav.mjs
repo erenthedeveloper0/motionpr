@@ -72,6 +72,7 @@ export const NAV = [
       ["cli/report.md", "report"],
       ["cli/doctor.md", "doctor"],
       ["cli/demo.md", "demo"],
+      ["cli/adapter.md", "adapter"],
     ],
   },
   {

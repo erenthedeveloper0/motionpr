@@ -89,7 +89,13 @@ a hidden one.
 
 - The capture format may still change between minor versions; older captures are migrated when
   they are read. Files written by a newer MotionPR are rejected with an actionable error.
-- The adapter protocol (`PROTOCOL_VERSION = 1`) may change before 1.0.
+- Adapter protocol 2 (unreleased, after `0.4.0-alpha`) is frozen until 1.0: it only gains
+  optional members. Scroll tracks from custom adapters are recorded as `native` scroll motion (the
+  capture format knows Lenis and native scrolling), so native scrolling's uneven-delivery grading
+  applies to them.
+- The conformance suite (`motionpr adapter check`) has no steps: the page must start the engine's
+  animations when it loads, and replay callbacks are checked only when the page reports them to
+  `window.__MOTIONPR_CHECK__`. It checks one adapter per run.
 
 The [roadmap](https://github.com/erenthedeveloper0/motionpr/blob/main/ROADMAP.md) lists what is
 planned.
