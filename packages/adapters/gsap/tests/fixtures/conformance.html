@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>gsap conformance fixture</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #fff;
+      }
+      .box {
+        position: absolute;
+        width: 60px;
+        height: 60px;
+        background: rgb(0, 0, 255);
+      }
+      [data-testid="title"] {
+        top: 40px;
+        left: 20px;
+      }
+      [data-testid="card-1"] {
+        top: 140px;
+        left: 20px;
+      }
+      [data-testid="card-2"] {
+        top: 140px;
+        left: 100px;
+      }
+      [data-testid="spinner"] {
+        top: 260px;
+        left: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box" data-testid="title"></div>
+    <div class="box" data-testid="card-1"></div>
+    <div class="box" data-testid="card-2"></div>
+    <div class="box" data-testid="spinner"></div>
+    <script src="/gsap.min.js"></script>
+    <script src="/adapter.js"></script>
+    <script>
+      // Motion that starts on load, as the conformance suite expects: a timeline (finite), a
+      // stagger, and an endless tween. Every callback reports to the suite's hook.
+      const { motionprGsap } = MotionprGsap;
+      motionprGsap.register(gsap);
+      const hook = () => window.__MOTIONPR_CHECK__?.callback();
+      const intro = gsap.timeline({ defaults: { ease: "power3.out" }, onComplete: hook });
+      intro.to("[data-testid=title]", { x: 120, opacity: 0.5, duration: 0.5, onUpdate: hook });
+      intro.to("[data-testid^=card]", { y: 40, duration: 0.4, stagger: 0.1, onComplete: hook });
+      motionprGsap.track(intro, "intro");
+      gsap.to("[data-testid=spinner]", {
+        rotation: 360,
+        duration: 1,
+        repeat: -1,
+        ease: "none",
+        onRepeat: hook,
+      });
+    </script>
+  </body>
+</html>

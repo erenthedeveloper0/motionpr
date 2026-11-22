@@ -2,7 +2,7 @@
  * MotionPR version. Kept in sync with packages/cli/package.json by scripts/sync-version.mjs
  * and verified by a unit test.
  */
-export const MOTIONPR_VERSION = "0.4.0-alpha";
+export const MOTIONPR_VERSION = "0.5.0-alpha";
 
 /** npm name of the public package (packages/cli/package.json `name`; verified by a unit test). */
 export const MOTIONPR_PACKAGE = "@erenthedeveloper0/motionpr";

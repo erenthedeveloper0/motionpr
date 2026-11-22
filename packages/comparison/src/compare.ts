@@ -4,6 +4,7 @@ import {
   COMPARISON_SCHEMA_VERSION,
   MOTIONPR_VERSION,
   MotionprError,
+  SHADOW_SEPARATOR,
   browserLabel,
   captureBrowser,
   contentId,
@@ -130,12 +131,21 @@ const SOURCE_LABEL: Record<string, string> = {
   lenis: "Lenis",
 };
 
+/** `motionpr-id:menu` → `menu`; other kinds of keys stay as they are. */
+function withoutMethod(key: string): string {
+  return key.replace(/^(motionpr-id|test-id|id):/, "");
+}
+
 /** Prefers explicit ids (what developers search for) over visible text. */
 export function elementName(r: AnimationRecord): string {
   const e = r.element;
-  if (e.method === "motionpr-id" || e.method === "test-id" || e.method === "dom-id")
-    return e.key.slice(e.key.indexOf(":") + 1);
-  return e.label ? `“${e.label}”` : e.key;
+  const strong = e.method === "motionpr-id" || e.method === "test-id" || e.method === "dom-id";
+  if (!e.shadowHost) return strong ? withoutMethod(e.key) : e.label ? `“${e.label}”` : e.key;
+  // Inside a shadow root: the hosts, then the element (`plan-pro >> glow`).
+  const host = e.shadowHost.split(SHADOW_SEPARATOR).map(withoutMethod).join(SHADOW_SEPARATOR);
+  const inner = e.key.slice(e.shadowHost.length + SHADOW_SEPARATOR.length);
+  const name = strong ? withoutMethod(inner) : e.label ? `“${e.label}”` : inner;
+  return `${host}${SHADOW_SEPARATOR}${name}`;
 }
 
 function describeElement(r: AnimationRecord): string {
@@ -193,17 +203,49 @@ async function compareCheckpoint(
     crossBrowser: boolean;
     /** Whether each capture recorded native scroll containers (`settings.scrollContainers`). */
     scrollContainers: { baseline: boolean; candidate: boolean };
+    /** Whether each capture looked inside shadow roots (`settings.shadowRoots`). */
+    shadowRoots: { baseline: boolean; candidate: boolean };
   },
 ): Promise<CheckpointComparison> {
   const { config } = ctx.options;
-  const { matches, removed, added } = matchAnimations(b.animations, c.animations);
+  const shadowLegacy =
+    ctx.shadowRoots.baseline === ctx.shadowRoots.candidate
+      ? null
+      : ctx.shadowRoots.baseline
+        ? "candidate"
+        : "baseline";
+  const { matches, removed, added } = matchAnimations(b.animations, c.animations, {
+    shadowLegacy,
+  });
+  // Records inside shadow roots that the newer capture has and the older one did not pair.
+  const unpairedShadow = (
+    shadowLegacy === "baseline" ? added : shadowLegacy === "candidate" ? removed : []
+  ).filter((r) => r.element.shadowHost !== undefined);
+  /**
+   * Why an animation found in one capture only is uncertain because the other capture is older
+   * than MotionPR's look inside shadow roots, or null (also when the rule's severity is set). A
+   * record inside a shadow root may have been missed there (CSS motion) or kept under its old
+   * identity; a record of the older capture may be one of those, now identified through its host.
+   */
+  const shadowLegacyNote = (r: AnimationRecord, side: "baseline" | "candidate"): string | null => {
+    const rule = side === "baseline" ? "animation-removed" : "animation-added";
+    if (!shadowLegacy || config.severity[rule]) return null;
+    const older = `The ${shadowLegacy} was captured before MotionPR looked inside shadow roots (MotionPR 0.4.0-alpha or earlier)`;
+    if (side !== shadowLegacy)
+      return r.element.shadowHost !== undefined
+        ? ` ${older}, so this is uncertain; capture it again to compare this animation.`
+        : null;
+    return unpairedShadow.some((n) => n.type === r.type)
+      ? ` ${older}: the ${side === "baseline" ? "candidate" : "baseline"} may record this animation inside a shadow root under a new identity, so this is uncertain; capture the ${shadowLegacy} again to compare it.`
+      : null;
+  };
   const animations: AnimationComparison[] = [];
 
   for (const m of matches) {
     const cmp = compareMatchedAnimation(m, config);
     // Where a scroll-linked animation runs in the scroll: from the positions its engine
     // resolved when both captures have them, otherwise from progress at the same position.
-    const resolved = scrollLinkChanges(m.baseline, m.candidate, config);
+    const resolved = scrollLinkChanges(m.baseline, m.candidate, config, shadowLegacy);
     const progress = resolved
       ? null
       : scrollLinkedChange(m.baseline, m.candidate, b.scrollMotion, c.scrollMotion, config);
@@ -235,11 +277,10 @@ async function compareCheckpoint(
     }
   }
   for (const r of removed) {
-    const severity = applyOverride(
-      "animation-removed",
-      lowConfidenceSeverity(r, "critical", config),
-      config,
-    );
+    const legacyNote = shadowLegacyNote(r, "baseline");
+    const severity = legacyNote
+      ? "uncertain"
+      : applyOverride("animation-removed", lowConfidenceSeverity(r, "critical", config), config);
     animations.push({
       key: r.id,
       status: "removed",
@@ -259,17 +300,16 @@ async function compareCheckpoint(
         animationKey: r.id,
         source: r.source,
         title: `Removed: ${describeElement(r)}`,
-        detail: `This animation no longer runs (${animationSummary(r)}).${r.element.confidence === "low" ? " The element is identified by DOM position, so it may have moved rather than disappeared." : ""}`,
+        detail: `This animation no longer runs (${animationSummary(r)}).${r.element.confidence === "low" ? " The element is identified by DOM position, so it may have moved rather than disappeared." : ""}${legacyNote ?? ""}`,
         measurement: "measured",
       });
     }
   }
   for (const r of added) {
-    const severity = applyOverride(
-      "animation-added",
-      lowConfidenceSeverity(r, "warning", config),
-      config,
-    );
+    const legacyNote = shadowLegacyNote(r, "candidate");
+    const severity = legacyNote
+      ? "uncertain"
+      : applyOverride("animation-added", lowConfidenceSeverity(r, "warning", config), config);
     animations.push({
       key: r.id,
       status: "added",
@@ -289,7 +329,7 @@ async function compareCheckpoint(
         animationKey: r.id,
         source: r.source,
         title: `Added: ${describeElement(r)}`,
-        detail: `New animation (${animationSummary(r)}).`,
+        detail: `New animation (${animationSummary(r)}).${legacyNote ?? ""}`,
         measurement: "measured",
       });
     }
@@ -370,6 +410,17 @@ async function compareCheckpoint(
 
   // Scroll motion: compared by its own metrics, never by animation rules.
   const scroll = compareScrollRecords(b.scrollMotion, c.scrollMotion, config);
+  // Scrollers inside shadow roots found in one capture only, when the other is older than
+  // MotionPR's look inside shadow roots (it recorded no containers there).
+  const unpairedShadowScroll = shadowLegacy
+    ? scroll.flatMap((sc) => {
+        const newStatus = shadowLegacy === "baseline" ? "added" : "removed";
+        if (sc.status !== newStatus) return [];
+        const records = (newStatus === "added" ? c : b).scrollMotion;
+        const record = records.find((r) => r.id === sc.key);
+        return record?.wrapper?.shadowHost !== undefined ? [record] : [];
+      })
+    : [];
   for (const sc of scroll) {
     const engine = SOURCE_LABEL[sc.source] ?? sc.source;
     if (sc.status === "removed" || sc.status === "added") {
@@ -382,8 +433,21 @@ async function compareCheckpoint(
       const other = sc.status === "removed" ? "candidate" : "baseline";
       const unrecorded =
         record?.source === "native" && record.wrapper !== null && !ctx.scrollContainers[other];
+      const side = sc.status === "removed" ? "baseline" : "candidate";
+      // Inside a shadow root, and the other capture did not look there; or a scroller of the
+      // older capture that the newer one may record inside a shadow root under a new identity.
+      // (A severity set for the rule applies as it is.)
+      const shadowUnrecorded =
+        !unrecorded &&
+        !config.severity[rule] &&
+        shadowLegacy !== null &&
+        record !== undefined &&
+        (side !== shadowLegacy
+          ? record.wrapper?.shadowHost !== undefined
+          : record.wrapper !== null &&
+            unpairedShadowScroll.some((n) => n.source === record.source && n.axis === record.axis));
       const severity =
-        unrecorded && !config.severity[rule]
+        (unrecorded || shadowUnrecorded) && !config.severity[rule]
           ? "uncertain"
           : applyOverride(
               rule,
@@ -410,6 +474,11 @@ async function compareCheckpoint(
               : `The candidate recorded this scroller${moved ? ` moving ${Math.round(Math.abs(metrics!.distance))}px` : ""}; the baseline did not.`) +
             (unrecorded
               ? ` The ${other} was captured without scroll-container recording (MotionPR 0.3.0-alpha or earlier, or capture.scrollContainers: false), so this is uncertain; capture it again to compare this scroller.`
+              : "") +
+            (shadowUnrecorded
+              ? side !== shadowLegacy
+                ? ` The ${other} was captured before MotionPR looked inside shadow roots (MotionPR 0.4.0-alpha or earlier), so this is uncertain; capture it again to compare this scroller.`
+                : ` The ${shadowLegacy} was captured before MotionPR looked inside shadow roots (MotionPR 0.4.0-alpha or earlier): the ${other} may record this scroller inside a shadow root under a new identity, so this is uncertain; capture the ${shadowLegacy} again to compare it.`
               : ""),
           measurement: "measured",
         });
@@ -711,6 +780,7 @@ export async function compareCaptures(options: CompareOptions): Promise<Comparis
         baseline: b.settings.scrollContainers,
         candidate: c.settings.scrollContainers,
       },
+      shadowRoots: { baseline: b.settings.shadowRoots, candidate: c.settings.shadowRoots },
     });
     const severity = maxSeverity(checkpoints.map((cp) => cp.severity));
     const changed = checkpoints.some((cp) => cp.status !== "unchanged");
@@ -817,6 +887,7 @@ async function compareScenarioCheckpoints(
     assets: ComparisonResult["assets"];
     crossBrowser: boolean;
     scrollContainers: { baseline: boolean; candidate: boolean };
+    shadowRoots: { baseline: boolean; candidate: boolean };
     structural: (
       key: string,
       rule: "checkpoint-added" | "checkpoint-removed",

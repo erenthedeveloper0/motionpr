@@ -66,7 +66,7 @@ npx motionpr run
 This is the real output of the example above:
 
 ```text
-◐ motionpr 0.4.0-alpha  ·  run
+◐ motionpr 0.5.0-alpha  ·  run
 
   → 1 scenario from motionpr.config.mjs
   → Starting web server: npm run dev

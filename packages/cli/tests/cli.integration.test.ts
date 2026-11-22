@@ -218,6 +218,44 @@ describe(`motionpr CLI (${TEST_BROWSER})`, () => {
   });
 });
 
+describe(`motionpr adapter check (${TEST_BROWSER})`, () => {
+  // A small tween engine with a protocol 2 adapter; ?bug=<name> breaks one rule.
+  const TOY = join(ROOT, "packages/capture/tests/fixtures/toy-adapter.html");
+
+  it("passes a conforming adapter with exit 0, without a config", async () => {
+    const r = await cli(["adapter", "check", TOY, "--timeout", "5000"], dir);
+    expect(r.code, r.stderr).toBe(0);
+    // Human output goes to stderr; stdout is kept for --json.
+    expect(r.stderr).toContain("toy  protocol 2 · engine 1.0.0 (tested >=1.0.0 <2.0.0)");
+    expect(r.stderr).toMatch(/replay-restores\s+2 animations at rest/);
+    expect(r.stderr).toContain("Conforms to adapter protocol 2");
+  });
+
+  it("exits 1 when a check fails, with the report as JSON", async () => {
+    const r = await cli(
+      ["adapter", "check", `${TOY}?bug=no-restore`, "--json", "--timeout", "4000"],
+      dir,
+    );
+    expect(r.code, r.stderr).toBe(1);
+    const report = JSON.parse(r.stdout) as {
+      passed: boolean;
+      browser: string;
+      checks: { id: string; status: string; details: string[] }[];
+    };
+    expect(report.passed).toBe(false);
+    expect(report.browser).toBe(TEST_BROWSER);
+    expect(report.checks.filter((c) => c.status === "fail").map((c) => c.id)).toEqual([
+      "replay-restores",
+    ]);
+  });
+
+  it("exits 2 when the page does not exist", async () => {
+    const r = await cli(["adapter", "check", join(dir, "nope.html")], dir);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("No page at");
+  });
+});
+
 describe("motionpr run with GSAP, Anime.js and Lenis in one app", () => {
   it("captures, compares and reports records from all three engines", async () => {
     const { serveDemo } = await import("../src/demo/server.ts");

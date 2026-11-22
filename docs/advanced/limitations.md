@@ -52,8 +52,10 @@ a hidden one.
   are compared by progress and were stable in all three engines.
 - **CSS scroll-driven animations** are recorded as metadata only.
 - **Scroll containers** (since `0.4.0-alpha`): native overflow containers are
-  recorded, but not inside shadow roots or iframes (their scroll events do not reach the page's
-  document). A container added, or starting to overflow, after its window opened is `partial`.
+  recorded, but not inside iframes (their scroll events do not reach the page's document), and
+  inside shadow roots only since `0.5.0-alpha`
+  ([Shadow DOM](../integrations/shadow-dom.md#scroll-containers)). A container added, or
+  starting to overflow, after its window opened is `partial`.
   `scrollTo` steps drive the first attached Lenis instance or a native container, not a Lenis
   instance on a container; `wheel` over its `wrapper` does.
 - **Smooth scrolling depends on the platform.** Chromium on Windows jumps instead of animating
@@ -64,8 +66,13 @@ a hidden one.
   peak velocity in MotionPR's tests; those differences are `uncertain`. Positions, duration and
   settling are stable. Headless engines also move a native scroller once per `wheel` event, so
   the curve of a native `wheel` scroll follows the step's `interval`.
-- **Shadow DOM**: animations inside shadow roots are discovered, but selectors do not pierce shadow
-  roots, so replayed shadow elements cannot always be re-found. Not covered by tests yet.
+- **Shadow DOM** (since `0.5.0-alpha`): open and closed roots attached by script,
+  declarative open roots and nested roots are observed; declarative closed roots, the browser's
+  own shadow trees (form controls, media) and iframes are not. Steps and screenshot masks do not
+  reach into closed roots, so an input inside one is not masked
+  ([Shadow DOM](../integrations/shadow-dom.md#limitations)). Up to `0.4.0-alpha`, CSS motion
+  inside shadow roots was not recorded at all (`document.getAnimations()` leaves shadow trees
+  out), and Web Animations there were identified without their host.
 
 ## Engines
 
@@ -82,7 +89,13 @@ a hidden one.
 
 - The capture format may still change between minor versions; older captures are migrated when
   they are read. Files written by a newer MotionPR are rejected with an actionable error.
-- The adapter protocol (`PROTOCOL_VERSION = 1`) may change before 1.0.
+- Adapter protocol 2 (since `0.5.0-alpha`) is frozen until 1.0: it only gains
+  optional members. Scroll tracks from custom adapters are recorded as `native` scroll motion (the
+  capture format knows Lenis and native scrolling), so native scrolling's uneven-delivery grading
+  applies to them.
+- The conformance suite (`motionpr adapter check`) has no steps: the page must start the engine's
+  animations when it loads, and replay callbacks are checked only when the page reports them to
+  `window.__MOTIONPR_CHECK__`. It checks one adapter per run.
 
 The [roadmap](https://github.com/erenthedeveloper0/motionpr/blob/main/ROADMAP.md) lists what is
 planned.

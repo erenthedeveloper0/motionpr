@@ -7,7 +7,8 @@ description: element.animate() and Animation objects are recorded automatically,
 
 Animations created with `element.animate()` are recorded without setup. MotionPR wraps
 `Element.prototype.animate` before your scripts run, so it sees each animation the moment it is
-created, and it also finds them through `document.getAnimations()`.
+created, and it also finds them through `document.getAnimations()` and inside the shadow roots of
+web components ([Shadow DOM](shadow-dom.md)).
 
 |         |                                                                                |
 | ------- | ------------------------------------------------------------------------------ |

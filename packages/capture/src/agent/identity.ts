@@ -1,5 +1,11 @@
-import { cssAttrValue, isLikelyGeneratedId, sanitizeLabel } from "@motionpr/core/identity";
+import {
+  SHADOW_SEPARATOR,
+  cssAttrValue,
+  isLikelyGeneratedId,
+  sanitizeLabel,
+} from "@motionpr/core/identity";
 import type { RawElementIdentity } from "@motionpr/core/protocol";
+import { shadowRootOf } from "./shadow.ts";
 
 export interface IdentityOptions {
   motionprIdAttribute: string;
@@ -12,22 +18,28 @@ interface Strong {
   method: RawElementIdentity["method"];
 }
 
+/**
+ * Where an element's identity is unique: the document, or the shadow root it is in (ids and
+ * selectors are scoped to one tree, and a component's template repeats in every instance).
+ */
+type Scope = Document | ShadowRoot;
+
 function cssEscape(value: string): string {
   return typeof CSS !== "undefined" && CSS.escape
     ? CSS.escape(value)
     : value.replace(/[^a-zA-Z0-9_-]/g, (c) => `\\${c}`);
 }
 
-function isUnique(selector: string, root: ParentNode = document): boolean {
+function isUnique(selector: string, scope: Scope): boolean {
   try {
-    return root.querySelectorAll(selector).length === 1;
+    return scope.querySelectorAll(selector).length === 1;
   } catch {
     return false;
   }
 }
 
 /** High/medium confidence identity of an element, or null when it has none. */
-function strongIdentity(el: Element, options: IdentityOptions): Strong | null {
+function strongIdentity(el: Element, options: IdentityOptions, scope: Scope): Strong | null {
   const mid = el.getAttribute(options.motionprIdAttribute);
   if (mid) {
     return {
@@ -45,19 +57,20 @@ function strongIdentity(el: Element, options: IdentityOptions): Strong | null {
     };
   }
   const id = el.id;
-  if (id && !isLikelyGeneratedId(id) && isUnique(`#${cssEscape(id)}`)) {
+  if (id && !isLikelyGeneratedId(id) && isUnique(`#${cssEscape(id)}`, scope)) {
     return { key: `id:${id}`, selector: `#${cssEscape(id)}`, method: "dom-id" };
   }
   return null;
 }
 
 /** Accessible-name based identity for interactive elements with a unique label. */
-function ariaIdentity(el: Element): Strong | null {
+function ariaIdentity(el: Element, scope: Scope): Strong | null {
   const tag = el.tagName.toLowerCase();
   const ariaLabel = el.getAttribute("aria-label");
   if (ariaLabel) {
     const selector = `${tag}[aria-label="${cssAttrValue(ariaLabel)}"]`;
-    if (isUnique(selector)) return { key: `aria:${tag}[${ariaLabel}]`, selector, method: "aria" };
+    if (isUnique(selector, scope))
+      return { key: `aria:${tag}[${ariaLabel}]`, selector, method: "aria" };
   }
   const role = el.getAttribute("role");
   if (
@@ -71,14 +84,14 @@ function ariaIdentity(el: Element): Strong | null {
     const text = sanitizeLabel(el.textContent, 40);
     if (text) {
       const sameTag = Array.from(
-        document.querySelectorAll(role ? `${tag}[role="${cssAttrValue(role)}"]` : tag),
+        scope.querySelectorAll(role ? `${tag}[role="${cssAttrValue(role)}"]` : tag),
       );
       const matches = sameTag.filter((other) => sanitizeLabel(other.textContent, 40) === text);
       if (matches.length === 1) {
         // :nth-of-type keeps the selector usable with querySelector; the key stays text-based.
         return {
           key: `aria:${role ?? tag}[${text}]`,
-          selector: domPath(el, null).selector,
+          selector: domPath(el, null, scope).selector,
           method: "aria",
         };
       }
@@ -89,20 +102,27 @@ function ariaIdentity(el: Element): Strong | null {
 
 function segment(el: Element): string {
   const tag = el.tagName.toLowerCase();
-  const parent = el.parentElement;
+  // At the top of a shadow tree the parent node is the shadow root, not an element.
+  const parent = el.parentElement ?? (shadowRootOf(el) === el.parentNode ? el.parentNode : null);
   if (!parent) return tag;
   const siblings = Array.from(parent.children).filter((c) => c.tagName === el.tagName);
   return siblings.length > 1 ? `${tag}:nth-of-type(${siblings.indexOf(el) + 1})` : tag;
 }
 
-/** Path from the nearest strongly identified ancestor (or <body>) down to the element. */
+/**
+ * Path from the nearest strongly identified ancestor down to the element. Without one, the path
+ * starts at <body>, or at the top of the shadow tree the element is in (`#shadow-root`, whose
+ * selector starts at `:scope`, the host, as in Playwright).
+ */
 function domPath(
   el: Element,
   anchor: { el: Element; strong: Strong } | null,
+  scope: Scope,
 ): { key: string; selector: string } {
   const parts: string[] = [];
   let current: Element | null = el;
-  const stop = anchor?.el ?? document.body;
+  const inShadow = scope !== document;
+  const stop = anchor?.el ?? (inShadow ? null : document.body);
   while (current && current !== stop && current !== document.documentElement) {
     parts.unshift(segment(current));
     current = current.parentElement;
@@ -114,6 +134,8 @@ function domPath(
       selector: `${anchor.strong.selector} > ${parts.join(" > ")}`,
     };
   }
+  if (inShadow)
+    return { key: `path:#shadow-root>${chain}`, selector: `:scope > ${parts.join(" > ")}` };
   return { key: `path:body>${chain}`, selector: `body > ${parts.join(" > ")}` };
 }
 
@@ -135,20 +157,18 @@ function labelOf(el: Element): string | undefined {
   return sanitizeLabel(text, 48);
 }
 
-/**
- * Identifies an element for cross-capture matching, preferring explicit attributes:
- * data-motionpr-id → data-testid → stable unique id → accessible label → anchored DOM path.
- */
-export function identifyElement(
+/** Identity of an element within one tree: its document or its shadow root. */
+function identifyInScope(
   el: Element,
   pseudoElement: string | null | undefined,
   options: IdentityOptions,
+  scope: Scope,
 ): RawElementIdentity {
   const tag = el.tagName.toLowerCase();
   const suffix = pseudoElement ? pseudoElement : "";
   const base = { tag, label: labelOf(el), ...(pseudoElement ? { pseudoElement } : {}) };
 
-  const strong = strongIdentity(el, options);
+  const strong = strongIdentity(el, options, scope);
   if (strong) {
     return {
       ...base,
@@ -159,7 +179,7 @@ export function identifyElement(
       warnings: [],
     };
   }
-  const aria = ariaIdentity(el);
+  const aria = ariaIdentity(el, scope);
   if (aria) {
     return {
       ...base,
@@ -173,13 +193,14 @@ export function identifyElement(
 
   let anchor: { el: Element; strong: Strong } | null = null;
   for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-    const s = strongIdentity(p, options);
+    const s = strongIdentity(p, options, scope);
     if (s) {
       anchor = { el: p, strong: s };
       break;
     }
   }
-  const path = domPath(el, anchor);
+  const path = domPath(el, anchor, scope);
+  const from = scope === document ? "<body>" : "the top of its shadow root";
   return {
     ...base,
     key: path.key + suffix,
@@ -190,7 +211,49 @@ export function identifyElement(
     warnings: [
       anchor
         ? `Matched by DOM position under ${anchor.strong.key}. Add ${options.motionprIdAttribute} for a reliable match.`
-        : `Matched by DOM position from <body>. Add ${options.motionprIdAttribute} for a reliable match.`,
+        : `Matched by DOM position from ${from}. Add ${options.motionprIdAttribute} for a reliable match.`,
+    ],
+  };
+}
+
+const RANK = { high: 2, medium: 1, low: 0 } as const;
+
+/**
+ * Identifies an element for cross-capture matching, preferring explicit attributes:
+ * data-motionpr-id → data-testid → stable unique id → accessible label → anchored DOM path.
+ *
+ * An element inside a shadow root is identified within that root (ids and uniqueness are per
+ * tree, and a component's template repeats in each instance) and prefixed with the identity of
+ * its host: `test-id:plan-pro >> motionpr-id:glow`, selector
+ * `[data-testid="plan-pro"] >> [data-motionpr-id="glow"]` (Playwright's chaining syntax). It is
+ * only as reliable as the less reliable of the two. `formerRoot` is the shadow root a detached
+ * element was in (a re-rendered component replaced it while it animated).
+ */
+export function identifyElement(
+  el: Element,
+  pseudoElement: string | null | undefined,
+  options: IdentityOptions,
+  formerRoot: ShadowRoot | null = null,
+): RawElementIdentity {
+  const root = shadowRootOf(el) ?? (el.isConnected ? null : formerRoot);
+  if (!root) return identifyInScope(el, pseudoElement, options, document);
+  const host = identifyElement(root.host, null, options);
+  const inner = identifyInScope(el, pseudoElement, options, root);
+  const confidence =
+    RANK[host.confidence] < RANK[inner.confidence] ? host.confidence : inner.confidence;
+  return {
+    ...inner,
+    key: `${host.key}${SHADOW_SEPARATOR}${inner.key}`,
+    selector: `${host.selector}${SHADOW_SEPARATOR}${inner.selector}`,
+    confidence,
+    shadowHost: host.key,
+    warnings: [
+      ...inner.warnings,
+      ...(host.confidence === "low"
+        ? [
+            `Inside the shadow root of ${host.key}, which is matched by DOM position. Add ${options.motionprIdAttribute} to the host for a reliable match.`,
+          ]
+        : []),
     ],
   };
 }

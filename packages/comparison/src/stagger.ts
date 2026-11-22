@@ -1,16 +1,28 @@
 import type { AnimationRecord, ComparisonConfig, StaggerChange } from "@motionpr/core";
 import { applyOverride, capSeverity, timingSeverity } from "./severity.ts";
 
+function withoutIndex(key: string): string {
+  return key.replace(/:nth-of-type\(\d+\)(::[a-z-]+)?$/, "$1").replace(/([-_]?)\d+$/, "$1#");
+}
+
 /**
  * Family key for stagger detection: siblings that animate the same way. Uses an explicit
  * adapter group when present (e.g. one staggered GSAP tween), otherwise the element key with
  * its trailing index stripped (`test-id:card-3` → `test-id:card-`, `…>li:nth-of-type(3)` → `…>li`).
+ * Inside the shadow root of a numbered host, the host's index is stripped instead: the same
+ * element of repeated components is one family (`test-id:card-3 >> motionpr-id:glow`, and
+ * `test-id:card-3 >> path:#shadow-root>div:nth-of-type(2)`, where the index is the element's
+ * place in the component's template, not an instance).
  */
 export function staggerGroupKey(r: AnimationRecord): string {
   if (r.group) return `group:${r.group}`;
-  const family = r.element.key
-    .replace(/:nth-of-type\(\d+\)(::[a-z-]+)?$/, "$1")
-    .replace(/([-_]?)\d+$/, "$1#");
+  const key = r.element.key;
+  const host = r.element.shadowHost;
+  const hostFamily = host && key.startsWith(host) ? withoutIndex(host) : null;
+  const family =
+    host && hostFamily !== null && hostFamily !== host
+      ? hostFamily + key.slice(host.length)
+      : withoutIndex(key);
   const props = r.properties
     .map((p) => p.property)
     .sort()

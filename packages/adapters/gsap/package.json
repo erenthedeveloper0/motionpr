@@ -1,6 +1,6 @@
 {
   "name": "@motionpr/gsap",
-  "version": "0.4.0-alpha",
+  "version": "0.5.0-alpha",
   "private": true,
   "description": "MotionPR GSAP adapter (published as @erenthedeveloper0/motionpr/gsap).",
   "type": "module",

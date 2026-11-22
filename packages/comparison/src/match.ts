@@ -1,4 +1,4 @@
-import type { AnimationRecord } from "@motionpr/core";
+import { keyInShadowRoot, type AnimationRecord } from "@motionpr/core";
 
 export interface AnimationMatch {
   baseline: AnimationRecord;
@@ -6,6 +6,18 @@ export interface AnimationMatch {
   method: "exact" | "element" | "fuzzy";
   confidence: "high" | "medium" | "low";
   notes: string[];
+  /** Why every change of this pair is uncertain (appended to its messages), if it is. */
+  uncertain?: string;
+}
+
+export interface MatchOptions {
+  /**
+   * The capture that predates MotionPR's look inside shadow roots (`settings.shadowRoots` is
+   * false), when only one does. It identified elements in shadow roots without their host, so
+   * the other capture's shadow-root records are paired with its records by their key within the
+   * root (`test-id:thumb` for `test-id:card-2 >> test-id:thumb`).
+   */
+  shadowLegacy?: "baseline" | "candidate" | null;
 }
 
 export interface MatchResult {
@@ -40,10 +52,15 @@ function jaccard(a: Set<string>, b: Set<string>): number {
  *    (e.g. renamed @keyframes or a different transition property);
  * 3. fuzzy: same type and name on an element with the same tag and the same label or
  *    selector, with at least 50% property overlap — always reported as low confidence.
+ *
+ * Against a capture made before MotionPR looked inside shadow roots, shadow-root records are
+ * first paired by their key within the root (`options.shadowLegacy`), as fuzzy matches whose
+ * changes are uncertain: that capture also replayed them without freezing their shadow tree.
  */
 export function matchAnimations(
   baseline: readonly AnimationRecord[],
   candidate: readonly AnimationRecord[],
+  options: MatchOptions = {},
 ): MatchResult {
   const matches: AnimationMatch[] = [];
   const restB = new Map(baseline.map((r) => [r.id, r]));
@@ -84,6 +101,36 @@ export function matchAnimations(
     });
     restB.delete(b.id);
     restC.delete(c.id);
+  }
+
+  if (options.shadowLegacy) {
+    const old = options.shadowLegacy;
+    const [newRest, oldRest] = old === "baseline" ? [restC, restB] : [restB, restC];
+    for (const n of [...newRest.values()]) {
+      if (!n.element.shadowHost) continue;
+      const inner = keyInShadowRoot(n.element);
+      let o: AnimationRecord | undefined;
+      for (const r of oldRest.values()) {
+        if (r.element.key === inner && r.type === n.type && r.name === n.name) {
+          o = r;
+          break;
+        }
+      }
+      if (!o) continue;
+      const [b, c] = old === "baseline" ? [o, n] : [n, o];
+      matches.push({
+        baseline: b,
+        candidate: c,
+        method: "fuzzy",
+        confidence: "low",
+        notes: [
+          `Element identity changed from ${b.element.key} to ${c.element.key}: the ${old} was captured before MotionPR identified elements inside shadow roots through their host.`,
+        ],
+        uncertain: `the ${old} was captured before MotionPR looked inside shadow roots`,
+      });
+      restB.delete(b.id);
+      restC.delete(c.id);
+    }
   }
 
   const candidates: { b: AnimationRecord; c: AnimationRecord; score: number }[] = [];

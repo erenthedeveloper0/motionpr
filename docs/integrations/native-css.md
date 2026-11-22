@@ -7,7 +7,8 @@ description: CSS transitions and @keyframes animations are recorded automaticall
 
 CSS transitions and CSS animations need **no setup**. The browser exposes them through
 `document.getAnimations()` as `CSSTransition` and `CSSAnimation` objects, and MotionPR's agent
-reads their timing, keyframes and easing directly.
+reads their timing, keyframes and easing directly. Inside web components it asks each shadow root
+for them ([Shadow DOM](shadow-dom.md)).
 
 |         |                                                                                    |
 | ------- | ---------------------------------------------------------------------------------- |

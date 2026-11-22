@@ -33,6 +33,8 @@ otherwise `0`. An engine that fails to launch does not stop the others.
 
 `motionpr capture` exits `2` when any scenario failed. `motionpr baseline accept` exits `2` when
 it refuses to replace a baseline without `--yes`.
+`motionpr adapter check` exits `1` when a conformance check failed and `2` when the page could not
+be checked (see [`motionpr adapter`](../cli/adapter.md#output-and-exit-codes)).
 
 ## Changing the threshold
 

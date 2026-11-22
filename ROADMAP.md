@@ -1,17 +1,31 @@
 # Roadmap
 
-What comes after `0.4.0-alpha`, roughly in order. Nothing under "Towards a beta" or "Later" is
+What comes after `0.5.0-alpha`, roughly in order. Nothing under "Towards a beta" or "Later" is
 built yet; what is built is in [the changelog](CHANGELOG.md) and
 [Limitations](docs/advanced/limitations.md). Order changes with what users run into; open an
 issue to argue for something.
 
 ## Done
 
+- **Adapter protocol 2** (`0.5.0-alpha`). The adapter contract for custom
+  engines is frozen until `1.0` (only optional additions; a breaking change gets a new number
+  while protocol 2 keeps working), adapters declare `protocol: 2`, and protocol 1 adapters keep
+  working. The agent checks what adapters report: an entry that would make a capture unreadable
+  is left out with a diagnostic. The conformance suite, `motionpr adapter check` (and
+  `checkAdapter()`), runs 21 checks against an adapter in a real browser; GSAP, Anime.js and Lenis
+  pass it in all three engines. See [Custom adapters](docs/advanced/custom-adapters.md).
+- **Shadow DOM** (`0.5.0-alpha`). Motion inside open, closed, nested and
+  declarative shadow roots is recorded, waited for and replayed; elements there are identified
+  through their host (`test-id:plan-pro >> motionpr-id:glow`) with selectors in Playwright's
+  chaining syntax that re-find re-rendered elements; scroll containers inside roots are recorded;
+  `scroll` and `scrollTo` steps find their elements with Playwright like every other step.
+  Declarative closed roots and iframes are not observed. See
+  [Shadow DOM](docs/integrations/shadow-dom.md).
 - **Nested native scroll containers** (`0.4.0-alpha`). The scroll motion of overflow
   containers is recorded from where they rested, compared and waited for like the document's,
   whether a step or the page scrolls them; `wheel` steps take a `selector` to scroll the
-  container under it (`scrollTo` already had one). Containers in shadow roots and iframes are not
-  recorded yet. See [Scenarios](docs/configuration/scenarios.md#scroll-motion).
+  container under it (`scrollTo` already had one). Containers in iframes are not recorded yet.
+  See [Scenarios](docs/configuration/scenarios.md#scroll-motion).
 - **Stable ScrollTrigger positions under native smooth scrolling** (`0.4.0-alpha`). Where a
   ScrollTrigger animation runs in the scroll is compared from the `start`/`end` positions
   ScrollTrigger resolved, and its `scrub` and `toggleActions` as scroll settings, instead of
@@ -32,11 +46,8 @@ issue to argue for something.
 ## Towards a beta
 
 1. **Example projects.** Small, runnable projects (plain HTML, React with GSAP, Astro with Lenis)
-   with their scenarios and committed baselines, tested in CI like the demo app.
-2. **Shadow DOM.** Selectors that pierce shadow roots for replay, with browser tests, and scroll
-   containers inside shadow roots.
-3. **Adapter protocol 2.** Freeze the adapter contract for custom engines before `1.0`, with a
-   conformance suite adapters can run.
+   with their scenarios and committed baselines, tested in CI like the demo app. The baselines
+   have to be captured where CI runs (Linux), so this starts with a CI job that captures them.
 
 ## Later
 

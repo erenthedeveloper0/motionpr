@@ -112,25 +112,26 @@ For every tween **per target element**:
 
 ## Supported patterns
 
-| Pattern                                                           | Status                                                                |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `gsap.to / from / fromTo`                                         | ✅                                                                    |
-| `gsap.timeline()` with nested tweens and nested timelines         | ✅                                                                    |
-| Timeline labels and position parameters                           | ✅                                                                    |
-| `stagger` (number, object, function)                              | ✅ per-target records with real offsets                               |
-| Keyframes (`keyframes: [...]`)                                    | ✅ expanded like staggers                                             |
-| `repeat`, `yoyo`, `repeatDelay`, infinite repeats                 | ✅ (one iteration sampled for infinite)                               |
-| Timelines created paused and played later (`tl.play()` on click)  | ✅ recorded in the window where they run                              |
-| `tl.reverse()` (e.g. menu close)                                  | ✅ negative playback rate                                             |
-| `timeScale()`                                                     | ✅                                                                    |
-| `gsap.context()`, `useGSAP()`                                     | ✅                                                                    |
-| `gsap.set()` / zero-duration tweens                               | ignored (not motion)                                                  |
-| Non-DOM targets (plain objects, canvas)                           | timing only, no samples                                               |
-| ScrollTrigger (`scrollTrigger:` vars), `scrub` or `toggleActions` | ✅ values sampled where the scroll went ([below](#scrolltrigger))     |
-| ScrollTrigger on a repeating tween or timeline                    | ⚠️ timing and live progress only                                      |
-| Animations created before `register()`                            | ⚠️ picked up if still on the global timeline; otherwise use `track()` |
-| `new gsap.core.Timeline()` / `new gsap.core.Tween()`              | use `track()`                                                         |
-| Draggable, Observer, Flip                                         | not observed                                                          |
+| Pattern                                                               | Status                                                                |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `gsap.to / from / fromTo`                                             | ✅                                                                    |
+| `gsap.timeline()` with nested tweens and nested timelines             | ✅                                                                    |
+| Timeline labels and position parameters                               | ✅                                                                    |
+| `stagger` (number, object, function)                                  | ✅ per-target records with real offsets                               |
+| Keyframes (`keyframes: [...]`)                                        | ✅ expanded like staggers                                             |
+| `repeat`, `yoyo`, `repeatDelay`, infinite repeats                     | ✅ (one iteration sampled for infinite)                               |
+| Timelines created paused and played later (`tl.play()` on click)      | ✅ recorded in the window where they run                              |
+| `tl.reverse()` (e.g. menu close)                                      | ✅ negative playback rate                                             |
+| `timeScale()`                                                         | ✅                                                                    |
+| `gsap.context()`, `useGSAP()`                                         | ✅                                                                    |
+| `gsap.set()` / zero-duration tweens                                   | ignored (not motion)                                                  |
+| Non-DOM targets (plain objects, canvas)                               | timing only, no samples                                               |
+| Targets inside shadow roots (passed as elements; since `0.5.0-alpha`) | ✅ identified through their host ([Shadow DOM](shadow-dom.md))        |
+| ScrollTrigger (`scrollTrigger:` vars), `scrub` or `toggleActions`     | ✅ values sampled where the scroll went ([below](#scrolltrigger))     |
+| ScrollTrigger on a repeating tween or timeline                        | ⚠️ timing and live progress only                                      |
+| Animations created before `register()`                                | ⚠️ picked up if still on the global timeline; otherwise use `track()` |
+| `new gsap.core.Timeline()` / `new gsap.core.Tween()`                  | use `track()`                                                         |
+| Draggable, Observer, Flip                                             | not observed                                                          |
 
 ## How replay works
 

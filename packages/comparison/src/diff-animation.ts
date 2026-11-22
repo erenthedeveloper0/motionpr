@@ -774,9 +774,10 @@ export function compareMatchedAnimation(
 
   const lowConfidence = b.element.confidence === "low" || c.element.confidence === "low";
   const uncertain =
-    config.uncertainOnLowConfidence && lowConfidence
+    match.uncertain ??
+    (config.uncertainOnLowConfidence && lowConfidence
       ? "element matched by DOM position only"
-      : null;
+      : null);
   const changes = finalizeChanges(drafts, config, uncertain);
   const severities = changes.map((ch) => ch.severity);
   const rank = { critical: 3, warning: 2, info: 1, uncertain: 0 } as const;

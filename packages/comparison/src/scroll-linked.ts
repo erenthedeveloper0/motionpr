@@ -1,9 +1,10 @@
-import type {
-  AnimationRecord,
-  ChangeKind,
-  ComparisonConfig,
-  ScrollLink,
-  ScrollMotionRecord,
+import {
+  SHADOW_SEPARATOR,
+  type AnimationRecord,
+  type ChangeKind,
+  type ComparisonConfig,
+  type ScrollLink,
+  type ScrollMotionRecord,
 } from "@motionpr/core";
 import { magnitudeSeverity, type ChangeDraft } from "./severity.ts";
 
@@ -80,19 +81,30 @@ const scrubText = (s: number | null) =>
  * Returns null when either record has no resolved positions (captures from before MotionPR
  * recorded them, `containerAnimation` triggers, adapters that do not report them): the caller
  * then compares progress at the same scroll position instead ({@link scrollLinkedChange}).
+ *
+ * `shadowLegacy` names the capture made before MotionPR identified elements inside shadow roots
+ * through their host: a scroller there is the same as the other's when only the host is missing.
  */
 export function scrollLinkChanges(
   b: AnimationRecord,
   c: AnimationRecord,
   config: ComparisonConfig,
+  shadowLegacy: "baseline" | "candidate" | null = null,
 ): ChangeDraft[] | null {
   const lb = b.scrollLink;
   const lc = c.scrollLink;
   if (!lb || !lc) return null;
   const sc = config.scroll;
   const drafts: ChangeDraft[] = [];
+  const [older, newer] = shadowLegacy === "candidate" ? [lc, lb] : [lb, lc];
+  const sameScroller =
+    lb.scroller === lc.scroller ||
+    (shadowLegacy !== null &&
+      older.scroller !== null &&
+      newer.scroller !== null &&
+      newer.scroller.endsWith(SHADOW_SEPARATOR + older.scroller));
 
-  if (lb.scroller !== lc.scroller || lb.axis !== lc.axis) {
+  if (!sameScroller || lb.axis !== lc.axis) {
     // Positions on different scrollers or axes are not comparable.
     drafts.push({
       kind: "scroll-config",

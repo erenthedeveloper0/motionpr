@@ -22,6 +22,7 @@
  */
 import {
   AGENT_GLOBAL,
+  PROTOCOL_VERSION,
   SUPPORTED_ENGINE_RANGES,
   type AdapterAnimation,
   type AdapterCapability,
@@ -587,6 +588,7 @@ function animeVersion(): string | null {
 
 class AnimeAdapter implements MotionprAdapter {
   readonly name = ADAPTER_ID;
+  readonly protocol = PROTOCOL_VERSION;
   readonly supportedRange = SUPPORTED_ANIMEJS_RANGE;
   readonly capabilities = CAPABILITIES;
   readonly #options: AnimeInstrumentationOptions;

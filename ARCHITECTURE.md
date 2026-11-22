@@ -48,7 +48,8 @@ schema sources.
    all state afterwards; the same build gives the same data.
 3. **Scroll is observed, never replayed.** Replaying would re-run the application's handlers.
 4. **Adapters use public APIs only**, record provenance instead of guessing, and do nothing when
-   MotionPR is not capturing.
+   MotionPR is not capturing. What they report is checked against the adapter protocol: an
+   entry that would make a capture unreadable is left out with a diagnostic, never written.
 5. **Uncertainty is not a regression.** Weak matches and incomplete data are `uncertain`.
 6. **Old captures keep reading.** Schema changes come with migrations.
 7. **Captures are untrusted input.** They are validated, and reports never execute their data.
@@ -61,7 +62,9 @@ schema sources.
 - The agent: `packages/capture/src/agent/main.ts`
 - Launching an engine: `packages/capture/src/browser.ts`; per-engine storage:
   `browserPaths()` in `packages/core/src/storage.ts`
-- The adapter contract: `packages/core/src/protocol.ts`
+- The adapter contract: `packages/core/src/protocol.ts` (adapter protocol 2), its rules as code in
+  `packages/core/src/adapter-contract.ts`, and the conformance suite in
+  `packages/capture/src/conformance.ts` with its in-page probe `packages/capture/src/agent/probe.ts`
 - The data model: `packages/core/src/schema/capture.ts` and `comparison.ts`
 - The comparison of one pair of animations: `packages/comparison/src/diff-animation.ts`
 - The severity rules: `packages/comparison/src/severity.ts`

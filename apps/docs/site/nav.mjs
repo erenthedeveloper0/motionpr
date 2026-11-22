@@ -42,6 +42,7 @@ export const NAV = [
     pages: [
       ["integrations/native-css.md", "Native CSS"],
       ["integrations/web-animations.md", "Web Animations API"],
+      ["integrations/shadow-dom.md", "Shadow DOM"],
       ["integrations/gsap.md", "GSAP"],
       ["integrations/animejs.md", "Anime.js"],
       ["integrations/lenis.md", "Lenis"],
@@ -71,6 +72,7 @@ export const NAV = [
       ["cli/report.md", "report"],
       ["cli/doctor.md", "doctor"],
       ["cli/demo.md", "demo"],
+      ["cli/adapter.md", "adapter"],
     ],
   },
   {

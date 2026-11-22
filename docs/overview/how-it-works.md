@@ -15,8 +15,9 @@ they connect.
 MotionPR starts your web server (or reuses one), opens each scenario in a fresh browser context
 (Chromium by default, or Firefox or WebKit) and injects its **agent** before any of your scripts
 run. The agent discovers native animations
-(`document.getAnimations()` every frame, plus a patched `Element.prototype.animate`) and receives
-records from engine **adapters** for GSAP, Anime.js and Lenis.
+(`document.getAnimations()` every frame, plus a patched `Element.prototype.animate`), also inside
+the shadow roots of web components, and receives records from engine **adapters** for GSAP,
+Anime.js and Lenis.
 
 Your scenario drives the page with real input: clicks, hovers, key presses, wheel events,
 smooth scrolls. Each `capture` step closes a **checkpoint window** that opened at the previous

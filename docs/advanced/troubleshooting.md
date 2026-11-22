@@ -144,12 +144,23 @@ npx motionpr report --regenerate
 
 ## Known capture limitations
 
-- **Shadow DOM:** animations inside shadow roots are discovered (`document.getAnimations()`
-  includes them), but element selectors do not pierce shadow roots, so a replaced shadow element
-  cannot be re-found for replay. Not covered by tests yet; give such elements a
-  `data-motionpr-id` on a stable host where possible.
-- **Scroll containers** (since `0.4.0-alpha`): containers inside shadow roots or
-  iframes are not recorded as scroll motion (their animations still are).
+- **Motion inside a web component is missing** (since `0.5.0-alpha`): shadow roots
+  attached by script (open or closed), declarative open roots and nested roots are observed. A
+  declarative closed root (`<template shadowrootmode="closed">`) is invisible to scripts, and so
+  to MotionPR ([Shadow DOM](../integrations/shadow-dom.md#which-shadow-roots)). With
+  `0.4.0-alpha` or earlier, CSS motion inside any shadow root was not recorded.
+- **Every element inside a component is matched by DOM position**: its host has no identity.
+  Elements in a shadow root are identified through their host
+  (`test-id:plan-pro >> motionpr-id:glow`), so give the host a `data-testid` or
+  `data-motionpr-id`.
+- **`No element matches … (waited … ms)`** in a `scroll` or `scrollTo` step: no element matched
+  the Playwright selector within `capture.actionTimeout`. Steps reach into open shadow roots, not
+  closed ones.
+- **Uncertain added and removed animations inside components after upgrading** from
+  `0.4.0-alpha`: the baseline was captured before MotionPR looked inside shadow roots. Accept a
+  new baseline once ([Shadow DOM](../integrations/shadow-dom.md#upgrading-from-040-alpha)).
+- **Scroll containers** (since `0.4.0-alpha`): containers inside iframes are not recorded as
+  scroll motion. Inside shadow roots they are since `0.5.0-alpha`.
 - **`wheel: … is outside the viewport`**: a `wheel` step with `selector` points at an element that
   is not on screen. Add a `scrollIntoView` step for it first; MotionPR does not scroll on its own.
 - **`wheel: … is covered by …`**: another element (an overlay, a sticky header) sits over the
@@ -166,22 +177,25 @@ npx motionpr report --regenerate
 
 Captures and comparisons carry diagnostics; the report lists them per checkpoint, warnings first.
 
-| Code                                                       | Level                             | Meaning                                                                                                                         |
-| ---------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `ADAPTER_MISSING`                                          | error if `required`, else warning | A configured adapter did not register in the page                                                                               |
-| `ANIMATIONS_NOT_SETTLED`                                   | warning                           | Motion was still running when the wait timed out                                                                                |
-| `PRE_TRIGGER_ANIMATIONS`                                   | info                              | Animations that started before the interaction were excluded                                                                    |
-| `INFINITE_ANIMATIONS`                                      | info                              | Infinite animations were recorded with one iteration sampled                                                                    |
-| `WINDOW_CAPPED`                                            | warning                           | The motion window exceeded `capture.maxWindow`                                                                                  |
-| `IMPLICIT_CAPTURE`                                         | info                              | A scenario without checkpoints got a final capture labelled `final`                                                             |
-| `LOW_CONFIDENCE_IDENTITY`                                  | info                              | Some animations are identified by DOM position only                                                                             |
-| `POSSIBLE_DUPLICATE_RECORDS`                               | warning                           | Two engines animate the same property of the same element at once                                                               |
-| `NETWORK_NOT_IDLE`, `FONTS_NOT_READY`, `IMAGES_NOT_LOADED` | warning                           | The page was not fully ready after navigation                                                                                   |
-| `FONT_LOAD_FAILED`                                         | warning                           | A web font face failed to load                                                                                                  |
-| `PAGE_ERROR`, `REQUEST_FAILED`                             | warning                           | The page threw an uncaught error, or a request failed                                                                           |
-| `CONSOLE_ERROR`                                            | info                              | The page logged an error to the console                                                                                         |
-| `SCROLL_NOT_SETTLED`, `SCROLL_STALLED`                     | warning                           | A scroller did not come to rest, or Lenis reports scrolling but never moves ([Lenis](../integrations/lenis.md#troubleshooting)) |
-| `SCROLL_NATIVE`, `SCROLL_LOW_FRAME_RATE`                   | info                              | `scrollTo` used native scrolling; few frames were sampled while waiting for scroll                                              |
-| `BROWSER_VERSION_DIFFERS`, `PLATFORM_DIFFERS`              | warning                           | Baseline and candidate come from different browsers or platforms                                                                |
-| `CONFIG_DIFFERS`                                           | info                              | The capture configuration changed between baseline and candidate                                                                |
-| `SAMPLE_COUNT_DIFFERS`                                     | info                              | Different `capture.samples`; path comparisons use endpoints only                                                                |
+| Code                                                       | Level                             | Meaning                                                                                                                                          |
+| ---------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ADAPTER_MISSING`                                          | error if `required`, else warning | A configured adapter did not register in the page                                                                                                |
+| `ADAPTER_PROTOCOL_UNSUPPORTED`                             | error                             | An adapter declares an adapter protocol this MotionPR does not support; it was not registered ([Custom adapters](custom-adapters.md#protocol-2)) |
+| `ADAPTER_RECORD_INVALID`                                   | warning                           | An adapter reported an entry without the documented types; it was left out (run [`motionpr adapter check`](../cli/adapter.md))                   |
+| `ADAPTER_DIAGNOSTICS_INVALID`                              | warning                           | An adapter's `diagnostics()` returned malformed entries; they were left out                                                                      |
+| `ANIMATIONS_NOT_SETTLED`                                   | warning                           | Motion was still running when the wait timed out                                                                                                 |
+| `PRE_TRIGGER_ANIMATIONS`                                   | info                              | Animations that started before the interaction were excluded                                                                                     |
+| `INFINITE_ANIMATIONS`                                      | info                              | Infinite animations were recorded with one iteration sampled                                                                                     |
+| `WINDOW_CAPPED`                                            | warning                           | The motion window exceeded `capture.maxWindow`                                                                                                   |
+| `IMPLICIT_CAPTURE`                                         | info                              | A scenario without checkpoints got a final capture labelled `final`                                                                              |
+| `LOW_CONFIDENCE_IDENTITY`                                  | info                              | Some animations are identified by DOM position only                                                                                              |
+| `POSSIBLE_DUPLICATE_RECORDS`                               | warning                           | Two engines animate the same property of the same element at once                                                                                |
+| `NETWORK_NOT_IDLE`, `FONTS_NOT_READY`, `IMAGES_NOT_LOADED` | warning                           | The page was not fully ready after navigation                                                                                                    |
+| `FONT_LOAD_FAILED`                                         | warning                           | A web font face failed to load                                                                                                                   |
+| `PAGE_ERROR`, `REQUEST_FAILED`                             | warning                           | The page threw an uncaught error, or a request failed                                                                                            |
+| `CONSOLE_ERROR`                                            | info                              | The page logged an error to the console                                                                                                          |
+| `SCROLL_NOT_SETTLED`, `SCROLL_STALLED`                     | warning                           | A scroller did not come to rest, or Lenis reports scrolling but never moves ([Lenis](../integrations/lenis.md#troubleshooting))                  |
+| `SCROLL_NATIVE`, `SCROLL_LOW_FRAME_RATE`                   | info                              | `scrollTo` used native scrolling; few frames were sampled while waiting for scroll                                                               |
+| `BROWSER_VERSION_DIFFERS`, `PLATFORM_DIFFERS`              | warning                           | Baseline and candidate come from different browsers or platforms                                                                                 |
+| `CONFIG_DIFFERS`                                           | info                              | The capture configuration changed between baseline and candidate                                                                                 |
+| `SAMPLE_COUNT_DIFFERS`                                     | info                              | Different `capture.samples`; path comparisons use endpoints only                                                                                 |

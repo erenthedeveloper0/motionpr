@@ -44,13 +44,19 @@ unless `allowCrossBrowser` is set, in which case `ENGINE_DEPENDENT_CHANGES` are 
 1. **Agent.** Before any page script runs, Playwright injects MotionPR's agent
    (`window.__MOTIONPR_AGENT__`). It discovers native animations (CSS transitions, CSS
    animations, Web Animations) by polling `document.getAnimations()` every frame and patching
-   `Element.prototype.animate`, and records interaction triggers.
+   `Element.prototype.animate`, and records interaction triggers. Shadow roots keep their
+   animations and non-composed events (`scroll`, `transitionrun`, `animationstart`) to
+   themselves, so the agent wraps `attachShadow`, finds declarative open roots when it scans the
+   page, and polls and listens to each root directly (`packages/capture/src/agent/shadow.ts`,
+   since `0.5.0-alpha`). Elements in a root are identified through its host.
 2. **Adapters** for JavaScript engines (GSAP, Anime.js, Lenis, custom) register with the agent
    from inside the app. They implement one contract (`MotionprAdapter` in
    `@motionpr/core/protocol`): `collect()` animations, and optionally `collectTimelines()`,
    `collectScroll()`, `claims()` for native animations their engine created, deterministic
    `beginReplay()` / `seek()` / `endReplay()`, `scrollStates()` for settle detection,
-   `scrollTo()` for scroll steps and `diagnostics()`. Their public handles add `dispose()`.
+   `scrollTo()` for scroll steps and `diagnostics()`. Their public handles add `dispose()`. The
+   contract is adapter protocol 2 (since `0.5.0-alpha`); the agent checks what
+   adapters report against it (below).
 3. **Windows.** Each checkpoint closes a window that opened at the previous checkpoint. The
    window origin is the first motion after the first interaction: the earliest animation start
    or the first frame of scroll movement. Motion that began before the interaction belongs to
@@ -84,6 +90,27 @@ timing)`) and seeking the paused clones, so the originals never re-dispatch
 
 Limitations of the approach are listed in each integration guide and in
 [Troubleshooting](troubleshooting.md) and [Limitations](limitations.md).
+
+## Adapter protocol and conformance
+
+The protocol's rules live as code in `@motionpr/core/adapter-contract` (dependency-free, so it
+runs in the page): `animationProblems()`, `timelineProblems()`, `scrollTrackProblems()`,
+`diagnosticProblems()` and `adapterProblems()` grade each problem `invalid` (the entry would make
+the capture unreadable), `violation` or `advice`. The agent uses them on everything an adapter
+reports: `invalid` entries are left out with an `ADAPTER_RECORD_INVALID` diagnostic, the rest is
+recorded, and an adapter that declares an unsupported protocol is not registered
+(`ADAPTER_PROTOCOL_UNSUPPORTED`). Third-party adapters are untrusted input, like captures.
+
+The conformance suite ([`motionpr adapter check`](../cli/adapter.md),
+`packages/capture/src/conformance.ts`) uses the same rules. It injects a probe after the agent
+(`packages/capture/src/agent/probe.ts`, bundled with the agent but never loaded by captures),
+which wraps `registerAdapter` to reach the adapter object and calls it directly: `collect()`
+every frame, `isAnimating()` against the entries' timing, replay at 0 %, 50 % and 100 % of each
+animation with values read from computed styles, a held seek across frames, `endReplay()` against
+a snapshot, `beginWindow()`, `scrollTo()`, `claims()` with a Web Animation of its own. It then
+loads the page without MotionPR and as a real capture (`runCapture()` with the adapter required).
+MotionPR's own test suites run it against the GSAP, Anime.js and Lenis adapters in all three
+engines, and against a small engine whose `?bug=` switches break one rule each.
 
 ## Comparison and report
 

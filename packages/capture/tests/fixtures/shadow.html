@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Shadow DOM fixture</title>
+    <!--
+      Motion inside shadow roots (viewport 800×600). "open" (light DOM) opens every component in
+      one task; staggers are declared delays, so start times do not depend on timers.
+      - plan-card × 3 (test ids plan-1…plan-3), open roots: the glow (motionpr-id glow)
+        transitions opacity (CSS, `:host([open])`, `?glow=` ms, default 300, each card
+        `?stagger=` ms later, default 60); the bar (no id: the second div at the top of the
+        root) animates with WAAPI (400 ms).
+      - x-vault (vault), closed root: its dot plays a CSS animation (250 ms).
+      - x-outer (outer) → x-inner (inner), nested open roots: the spark (motionpr-id spark)
+        transitions (300 ms).
+      - a declarative open root (dsd): its pulse plays a CSS animation (300 ms).
+      - x-inbox (inbox), open root: a scroll container (list, 200px tall, 1500px of content);
+        "jump" in the root scrolls it to 600 (the page animates scrollTop, 300 ms ease-out).
+      - x-ticker (ticker), open root: "tick" starts a 3 s transition (for ignore.selectors).
+      - "swap" animates card 1's flash (WAAPI, 400 ms) and replaces the element 50 ms later.
+      - x-footer (footer), 1400px down: a note inside its open root (scrollTo targets), and with
+        `?img=<ms>` an image the component adds once the page has loaded (the load event does not
+        wait for it) and that takes that long to load.
+    -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        font: 14px sans-serif;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 12px;
+        align-items: flex-start;
+      }
+      .row > * {
+        flex: none;
+      }
+      x-footer {
+        display: block;
+        margin-top: 1400px;
+        height: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <button data-testid="open">Open</button>
+      <button data-testid="tick">Tick</button>
+      <button data-testid="swap">Swap</button>
+    </div>
+    <div class="row">
+      <plan-card data-testid="plan-1"></plan-card>
+      <plan-card data-testid="plan-2"></plan-card>
+      <plan-card data-testid="plan-3"></plan-card>
+      <x-vault data-testid="vault"></x-vault>
+      <x-outer data-testid="outer"></x-outer>
+      <div data-testid="dsd">
+        <template shadowrootmode="open">
+          <style>
+            .pulse {
+              width: 40px;
+              height: 40px;
+              background: #6c5ce7;
+            }
+            :host(.open) .pulse {
+              animation: pulse 300ms ease-out;
+            }
+            @keyframes pulse {
+              from {
+                transform: scale(0.5);
+              }
+              to {
+                transform: scale(1);
+              }
+            }
+          </style>
+          <div class="pulse"></div>
+        </template>
+      </div>
+      <x-inbox data-testid="inbox"></x-inbox>
+      <x-ticker data-testid="ticker"></x-ticker>
+    </div>
+    <x-footer data-testid="footer"></x-footer>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const glow = Number(params.get("glow") ?? 300);
+      const stagger = Number(params.get("stagger") ?? 60);
+
+      class PlanCard extends HTMLElement {
+        constructor() {
+          super();
+          const root = this.attachShadow({ mode: "open" });
+          root.innerHTML = `
+            <style>
+              :host { display: block; width: 90px; }
+              div { height: 24px; margin: 2px 0; background: #dfe6e9; }
+              [data-motionpr-id="glow"] { opacity: 0.2; transition: opacity var(--glow) ease-out var(--delay); }
+              :host([open]) [data-motionpr-id="glow"] { opacity: 1; }
+            </style>
+            <div data-motionpr-id="glow"></div>
+            <div></div>
+            <div data-motionpr-id="flash"></div>`;
+        }
+        open(index) {
+          this.style.setProperty("--glow", `${glow}ms`);
+          this.style.setProperty("--delay", `${index * stagger}ms`);
+          this.setAttribute("open", "");
+          const bar = this.shadowRoot.querySelectorAll("div")[1];
+          bar.animate([{ transform: "translateX(0)" }, { transform: "translateX(40px)" }], {
+            duration: 400,
+            delay: index * stagger,
+            easing: "ease-in-out",
+            fill: "forwards",
+          });
+        }
+      }
+      customElements.define("plan-card", PlanCard);
+
+      class XVault extends HTMLElement {
+        #root;
+        constructor() {
+          super();
+          this.#root = this.attachShadow({ mode: "closed" });
+          this.#root.innerHTML = `
+            <style>
+              .dot { width: 30px; height: 30px; background: #00b894; }
+              :host([open]) .dot { animation: pop 250ms ease-out; }
+              @keyframes pop { from { opacity: 0; } to { opacity: 1; } }
+            </style>
+            <div class="dot"></div>`;
+        }
+      }
+      customElements.define("x-vault", XVault);
+
+      class XInner extends HTMLElement {
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" }).innerHTML = `
+            <style>
+              [data-motionpr-id="spark"] { width: 30px; height: 30px; background: #fdcb6e; transform: translateY(0); transition: transform 300ms ease-out; }
+              :host([open]) [data-motionpr-id="spark"] { transform: translateY(20px); }
+            </style>
+            <div data-motionpr-id="spark"></div>`;
+        }
+      }
+      customElements.define("x-inner", XInner);
+
+      class XOuter extends HTMLElement {
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" }).innerHTML = `<x-inner data-testid="inner"></x-inner>`;
+        }
+        open() {
+          this.shadowRoot.querySelector("x-inner").setAttribute("open", "");
+        }
+      }
+      customElements.define("x-outer", XOuter);
+
+      class XInbox extends HTMLElement {
+        constructor() {
+          super();
+          const root = this.attachShadow({ mode: "open" });
+          root.innerHTML = `
+            <style>
+              [data-testid="list"] { width: 160px; height: 200px; overflow-y: auto; border: 1px solid #ccc; }
+              [data-testid="list"] > div { height: 1500px; background: linear-gradient(#fff, #74b9ff); }
+            </style>
+            <div data-testid="list"><div></div></div>
+            <button data-testid="jump">Jump</button>`;
+          const list = root.querySelector('[data-testid="list"]');
+          root.querySelector('[data-testid="jump"]').addEventListener("click", () => {
+            // Animates the position itself (a carousel library would): smooth scrolling of the
+            // platform is not used, so the motion does not depend on system settings.
+            const from = list.scrollTop;
+            const start = performance.now();
+            const frame = (now) => {
+              const t = Math.min(1, (now - start) / 300);
+              list.scrollTop = from + (600 - from) * (1 - (1 - t) ** 3);
+              if (t < 1) requestAnimationFrame(frame);
+            };
+            requestAnimationFrame(frame);
+          });
+        }
+      }
+      customElements.define("x-inbox", XInbox);
+
+      class XTicker extends HTMLElement {
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" }).innerHTML = `
+            <style>
+              .belt { width: 60px; height: 20px; background: #b2bec3; transition: transform 3000ms linear; }
+              :host([open]) .belt { transform: translateX(40px); }
+            </style>
+            <div class="belt"></div>`;
+        }
+      }
+      customElements.define("x-ticker", XTicker);
+
+      class XFooter extends HTMLElement {
+        constructor() {
+          super();
+          const root = this.attachShadow({ mode: "open" });
+          root.innerHTML = `<p data-testid="note">Footer note</p>`;
+          const slow = params.get("img");
+          if (slow)
+            addEventListener("load", () => {
+              root.innerHTML += `<img alt="" src="missing.png?delay=${Number(slow)}" />`;
+            });
+        }
+      }
+      customElements.define("x-footer", XFooter);
+
+      const $ = (selector) => document.querySelector(selector);
+      $("[data-testid=open]").addEventListener("click", () => {
+        document.querySelectorAll("plan-card").forEach((card, i) => card.open(i));
+        $("x-vault").setAttribute("open", "");
+        $("x-outer").open();
+        $("[data-testid=dsd]").classList.add("open");
+      });
+      $("[data-testid=tick]").addEventListener("click", () =>
+        $("x-ticker").setAttribute("open", ""),
+      );
+      $("[data-testid=swap]").addEventListener("click", () => {
+        const root = $("[data-testid=plan-1]").shadowRoot;
+        const flash = root.querySelector('[data-motionpr-id="flash"]');
+        flash.animate([{ opacity: 1 }, { opacity: 0.3 }], { duration: 400, fill: "forwards" });
+        // A re-render replaces the element while its animation runs.
+        setTimeout(() => flash.replaceWith(flash.cloneNode()), 50);
+      });
+    </script>
+  </body>
+</html>

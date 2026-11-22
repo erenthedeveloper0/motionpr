@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { arch, platform, release } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { promisify } from "node:util";
-import type { Browser, BrowserContext, Locator, Page } from "playwright-core";
+import type { Browser, BrowserContext, ElementHandle, Locator, Page } from "playwright-core";
 import {
   AssetStore,
   CAPTURE_SCHEMA_VERSION,
@@ -56,6 +56,10 @@ const ADAPTER_HINTS: Record<string, string> = {
   lenis: "Call motionprLenis.attach(lenis) after creating Lenis (see docs/integrations/lenis.md).",
 };
 
+const RECORD_HINT =
+  "The adapter broke the adapter protocol. `npx motionpr adapter check <page>` checks an adapter against every rule (docs/cli/adapter.md).";
+const PROTOCOL_HINT = `Update ${MOTIONPR_PACKAGE}, or use a version of the adapter written for adapter protocol 2 (docs/advanced/custom-adapters.md).`;
+
 /** Builds the adapter health table from what registered in the page and what was configured. */
 export function adapterStatuses(
   registered: Awaited<ReturnType<NonNullable<Window["__MOTIONPR_AGENT__"]>["adapterStatus"]>>,
@@ -63,6 +67,8 @@ export function adapterStatuses(
 ): AdapterStatus[] {
   const out: AdapterStatus[] = registered.map((a) => ({
     id: a.id,
+    // Agents before 0.5.0-alpha did not report it.
+    ...(a.protocol !== undefined ? { protocol: a.protocol } : {}),
     engineVersion: a.engineVersion,
     supportedRange: a.supportedRange,
     versionStatus:
@@ -412,6 +418,7 @@ export async function runCapture(options: CaptureOptions): Promise<CaptureOutcom
       maxWindow: config.capture.maxWindow,
       maskInputs: config.privacy.maskInputs,
       scrollContainers: config.capture.scrollContainers,
+      shadowRoots: true,
     },
     configHash: configHash(config),
     scenarios: results.filter(Boolean),
@@ -617,9 +624,13 @@ async function runScenario(
         timeout: 5000,
       });
       await waitForReady(p, agent, config, diag);
-      const registered = await agent("adapters");
+      const registered = await agent("adapterStatus");
+      for (const status of registered) {
+        const rejected = status.diagnostics.find((d) => d.code === "ADAPTER_PROTOCOL_UNSUPPORTED");
+        if (rejected) diag({ ...rejected, hint: PROTOCOL_HINT });
+      }
       for (const adapter of config.adapters) {
-        if (!registered.some((r) => r.name === adapter.name)) {
+        if (!registered.some((r) => r.id === adapter.name)) {
           diag({
             level: adapter.required ? "error" : "warning",
             code: "ADAPTER_MISSING",
@@ -672,38 +683,44 @@ async function runScenario(
       try {
         if (ctx.signal?.aborted) throw new MotionprError("ABORTED", "Capture aborted.");
         const kind = triggerKind(step);
-        if (kind) await agent("beginStep", i, kind);
-        await executeStep(p, step, agent, {
-          config,
-          navigate: async (s) => {
-            const base = effectiveBaseURL(config) ?? scenarioStartUrl;
-            await navigate(s.url ?? joinUrl(base, s.path ?? "/"), s.waitUntil ?? "load");
-          },
-          settle,
-          diag,
-          capture: async (s) => {
-            const checkpoint = await captureCheckpoint(p, s, checkpoints.length, {
-              config,
-              assets,
-              agent,
-              settle,
-              diag,
-              privacy,
-              viewport,
-              debug: ctx.debug === true,
-              onEvent,
-              key,
-            });
-            checkpoints.push(checkpoint);
-            onEvent({
-              type: "checkpoint",
-              key,
-              label: checkpoint.label,
-              animations: checkpoint.animations.length,
-              frames: checkpoint.frames.length,
-            });
-          },
-        });
+        // Found before the trigger time, so looking them up is not part of the latency.
+        const elements = await stepElements(p, step, config);
+        try {
+          if (kind) await agent("beginStep", i, kind);
+          await executeStep(p, step, agent, elements, {
+            config,
+            navigate: async (s) => {
+              const base = effectiveBaseURL(config) ?? scenarioStartUrl;
+              await navigate(s.url ?? joinUrl(base, s.path ?? "/"), s.waitUntil ?? "load");
+            },
+            settle,
+            diag,
+            capture: async (s) => {
+              const checkpoint = await captureCheckpoint(p, s, checkpoints.length, {
+                config,
+                assets,
+                agent,
+                settle,
+                diag,
+                privacy,
+                viewport,
+                debug: ctx.debug === true,
+                onEvent,
+                key,
+              });
+              checkpoints.push(checkpoint);
+              onEvent({
+                type: "checkpoint",
+                key,
+                label: checkpoint.label,
+                animations: checkpoint.animations.length,
+                frames: checkpoint.frames.length,
+              });
+            },
+          });
+        } finally {
+          await disposeStepElements(elements);
+        }
         steps.push({
           index: i,
           type: step.type,
@@ -855,6 +872,72 @@ function maskLocators(page: Page, config: ResolvedConfig): Locator[] {
   return selectors.map((s) => page.locator(s));
 }
 
+/**
+ * Elements a step hands to the agent (`scroll` and `scrollTo` act in the page). They are found by
+ * Playwright, like the targets of `click` and `hover`: the same selectors work for every step,
+ * including inside open shadow roots, and a step waits for its element to be attached.
+ */
+interface StepElements {
+  /** `scrollTo` with a selector as `target`. */
+  target?: ElementHandle<Element>;
+  /** The container a `scroll` or `scrollTo` step scrolls (`selector`). */
+  container?: ElementHandle<Element>;
+}
+
+async function stepElements(
+  page: Page,
+  step: ResolvedStep,
+  config: ResolvedConfig,
+): Promise<StepElements> {
+  const out: StepElements = {};
+  try {
+    if (step.type === "scroll" && step.selector)
+      out.container = await stepElement(page, step.selector, config);
+    if (step.type === "scrollTo") {
+      if (typeof step.target === "string")
+        out.target = await stepElement(page, step.target, config);
+      if (step.selector) out.container = await stepElement(page, step.selector, config);
+    }
+  } catch (error) {
+    await disposeStepElements(out);
+    throw error;
+  }
+  return out;
+}
+
+/** The first element matching a Playwright selector, once it is attached. */
+async function stepElement(
+  page: Page,
+  selector: string,
+  config: ResolvedConfig,
+): Promise<ElementHandle<Element>> {
+  let handle: ElementHandle<Element> | null = null;
+  try {
+    handle = await page
+      .locator(selector)
+      .first()
+      .elementHandle({ timeout: config.capture.actionTimeout });
+  } catch (error) {
+    if (!(error instanceof Error && error.name === "TimeoutError")) throw error;
+  }
+  if (!handle)
+    throw new Error(`No element matches ${selector} (waited ${config.capture.actionTimeout} ms).`);
+  return handle;
+}
+
+async function disposeStepElements(elements: StepElements): Promise<void> {
+  for (const handle of [elements.target, elements.container])
+    await handle?.dispose().catch(() => undefined);
+}
+
+/**
+ * An element handle as the agent receives it: Playwright passes handles inside `evaluate`
+ * arguments to the page as the elements themselves.
+ */
+function inPage(handle: ElementHandle<Element> | undefined): Element | null {
+  return (handle ?? null) as unknown as Element | null;
+}
+
 interface StepHooks {
   config: ResolvedConfig;
   diag(d: Omit<Diagnostic, "scenario">): void;
@@ -867,6 +950,7 @@ async function executeStep(
   page: Page,
   step: ResolvedStep,
   agent: AgentCall,
+  elements: StepElements,
   hooks: StepHooks,
 ): Promise<void> {
   switch (step.type) {
@@ -889,16 +973,16 @@ async function executeStep(
     case "move":
       return page.mouse.move(step.x, step.y, { steps: step.steps ?? 1 });
     case "scroll":
-      await agent("scrollTo", step.selector ?? null, step.x ?? null, step.y ?? null);
+      await agent("scrollTo", inPage(elements.container), step.x ?? null, step.y ?? null);
       return;
     case "scrollTo": {
       const result = await agent("smoothScrollTo", {
-        target: step.target,
+        target: inPage(elements.target) ?? (step.target as number),
         behavior: step.behavior,
         via: step.via,
         axis: step.axis ?? null,
         offset: step.offset ?? null,
-        selector: step.selector ?? null,
+        selector: inPage(elements.container),
       });
       if (step.via === "auto" && result.via === "native" && step.behavior === "smooth") {
         hooks.diag({
@@ -1134,7 +1218,8 @@ async function captureCheckpoint(
   const collected = await agent("collect");
   if (step.maxWindow !== undefined)
     await agent("configure", { maxWindowMs: config.capture.maxWindow });
-  for (const d of collected.diagnostics) checkpointDiag(d);
+  for (const d of collected.diagnostics)
+    checkpointDiag(d.code === "ADAPTER_RECORD_INVALID" ? { ...d, hint: RECORD_HINT } : d);
   if (collected.capped) {
     checkpointDiag({
       level: "warning",

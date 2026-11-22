@@ -43,6 +43,23 @@ export function isLikelyGeneratedId(id: string): boolean {
   return false;
 }
 
+/**
+ * Joins a shadow host's identity and the identity of an element inside its shadow root, in keys
+ * (`test-id:plan-pro >> motionpr-id:glow`) and selectors (Playwright's chaining operator).
+ */
+export const SHADOW_SEPARATOR = " >> ";
+
+/**
+ * The part of an element key below its innermost shadow host (`motionpr-id:glow` for
+ * `test-id:plan-pro >> motionpr-id:glow`); the whole key for elements outside shadow roots.
+ */
+export function keyInShadowRoot(identity: { key: string; shadowHost?: string }): string {
+  const host = identity.shadowHost;
+  if (!host) return identity.key;
+  const prefix = host + SHADOW_SEPARATOR;
+  return identity.key.startsWith(prefix) ? identity.key.slice(prefix.length) : identity.key;
+}
+
 /** Collapses whitespace, strips control characters and truncates user-visible labels. */
 export function sanitizeLabel(value: string | null | undefined, max = 60): string | undefined {
   if (!value) return undefined;

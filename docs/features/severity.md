@@ -69,6 +69,22 @@ When either side's element is identified only by DOM position, every change on t
 becomes **uncertain** (and removal/addition too, since the element may simply have moved). Add a
 `data-motionpr-id` to fix this, or set `comparison.uncertainOnLowConfidence: false`.
 
+### Captures that did not look inside shadow roots
+
+Since `0.5.0-alpha`. Captures made with `0.4.0-alpha` or earlier did not record CSS
+motion or scroll containers inside shadow roots, and identified the rest there without its host.
+Against such a capture, unless the rule's severity is set:
+
+- `animation-added` and `scroll-added` for a record inside a shadow root are `uncertain`
+  (_… The baseline was captured before MotionPR looked inside shadow roots (MotionPR 0.4.0-alpha
+  or earlier), so this is uncertain; capture it again to compare this animation._);
+- `animation-removed` and `scroll-removed` for an old record that may be one of those, under its
+  old key, are `uncertain`;
+- records paired by their key within the root are fuzzy matches, and all their changes are
+  `uncertain`.
+
+See [Shadow DOM](../integrations/shadow-dom.md#upgrading-from-040-alpha).
+
 ## Overrides
 
 ```ts

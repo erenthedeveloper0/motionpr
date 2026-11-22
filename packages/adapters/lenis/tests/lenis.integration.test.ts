@@ -5,7 +5,7 @@ import {
   type Checkpoint,
   type ScrollMotionRecord,
 } from "@motionpr/core";
-import { AGENT_SOURCE } from "@motionpr/capture";
+import { AGENT_SOURCE, checkAdapter } from "@motionpr/capture";
 import { compareCaptures, scrollMetrics } from "@motionpr/comparison";
 import { startHarness, type Harness } from "./harness.ts";
 
@@ -349,5 +349,19 @@ describe("Lenis adapter: lifecycle", () => {
     });
     expect(message).toMatch(/expects a Lenis instance/);
     await context.close();
+  });
+});
+
+describe("adapter conformance suite (adapter protocol 2)", () => {
+  // A scroll adapter: the suite scrolls
+  // through its scrollTo() and expects collectScroll() to record it.
+  it("passes every check that applies to the lenis adapter", async () => {
+    const report = await checkAdapter({ page: `${h.server.url}/lenis.html`, browser: h.browser });
+    expect(report.adapter).toMatchObject({ name: "lenis", protocol: 2 });
+    expect(
+      report.checks.filter((c) => c.status === "fail" || c.status === "warn"),
+      JSON.stringify(report.checks, null, 1),
+    ).toEqual([]);
+    expect(report.passed).toBe(true);
   });
 });

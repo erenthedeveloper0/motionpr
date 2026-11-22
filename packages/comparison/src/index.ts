@@ -5,7 +5,12 @@ export {
   type CompareOptions,
 } from "./compare.ts";
 export { compareMatchedAnimation, easingChange } from "./diff-animation.ts";
-export { matchAnimations, type AnimationMatch, type MatchResult } from "./match.ts";
+export {
+  matchAnimations,
+  type AnimationMatch,
+  type MatchOptions,
+  type MatchResult,
+} from "./match.ts";
 export {
   DEFAULT_RULE_SEVERITY,
   applyOverride,

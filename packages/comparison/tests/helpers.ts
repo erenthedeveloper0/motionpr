@@ -221,6 +221,7 @@ export function bundle(
       maxWindow: 5000,
       maskInputs: true,
       scrollContainers: true,
+      shadowRoots: true,
     },
     configHash: "h",
     scenarios,

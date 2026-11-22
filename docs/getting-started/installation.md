@@ -34,10 +34,10 @@ npx motionpr --version
 
 ## Why `@alpha`
 
-MotionPR is in alpha. Its versions are prereleases (`0.4.0-alpha`) and they are published on
+MotionPR is in alpha. Its versions are prereleases (`0.5.0-alpha`) and they are published on
 npm's `alpha` dist-tag. Naming the tag installs the newest alpha; once MotionPR has a stable
 release, `npm install -D @erenthedeveloper0/motionpr` will install that instead. A semver range
-such as `^0.4.0` never matches a prerelease, so nobody receives an alpha by accident.
+such as `^0.5.0` never matches a prerelease, so nobody receives an alpha by accident.
 
 ## What gets installed
 

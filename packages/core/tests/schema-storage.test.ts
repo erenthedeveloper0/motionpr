@@ -56,6 +56,7 @@ export function emptyBundle(id = "20261113-120000-abcd"): CaptureBundle {
       maxWindow: 5000,
       maskInputs: true,
       scrollContainers: true,
+      shadowRoots: true,
     },
     configHash: "abc",
     scenarios: [],

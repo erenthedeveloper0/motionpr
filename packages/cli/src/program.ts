@@ -8,6 +8,7 @@ import {
   MOTIONPR_INSTALL_SPEC,
   MOTIONPR_REPOSITORY,
 } from "@motionpr/core";
+import { adapterCheckCommand } from "./commands/adapter.ts";
 import {
   baselineAcceptCommand,
   baselineMigrateCommand,
@@ -266,6 +267,26 @@ Docs:    ${MOTIONPR_DOCS_URL}`,
     .option("--browser <name>", "browsers to launch-check (default: config browser.name)", collect)
     .option("--no-launch", "skip the browser launch check")
     .action(action(doctorCommand));
+
+  const adapter = program
+    .command("adapter")
+    .description("check animation-engine adapters against the adapter protocol");
+  adapter
+    .command("check")
+    .argument(
+      "<page>",
+      "URL or HTML file of a page that uses the adapter and starts motion on load",
+    )
+    .description("run the adapter conformance suite (adapter protocol 2) in a real browser")
+    .option("--adapter <name>", "adapter to check (default: the only one the page registers)")
+    .option("--script <file>", "script that registers the adapter, injected before page scripts")
+    .option("--browser <name>", "chromium (default), firefox, webkit, or all (repeatable)", collect)
+    .option(
+      "--timeout <ms>",
+      "wait this long for registration, motion and settling (default 10000)",
+    )
+    .option("--headed", "show the browser window")
+    .action(action(adapterCheckCommand));
 
   program
     .command("demo")

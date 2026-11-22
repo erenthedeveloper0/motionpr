@@ -172,6 +172,24 @@ describe("capture schema migration v1 → v2", () => {
     expect(parseCaptureBundle(structuredClone(upgraded)).settings.scrollContainers).toBe(true);
   });
 
+  it("reads captures made before MotionPR looked inside shadow roots as not looking there", () => {
+    const upgraded = parseCaptureBundle(structuredClone(v1Capture));
+    expect(upgraded.settings.shadowRoots).toBe(false);
+    const record = upgraded.scenarios[0]!.checkpoints[0]!.animations[0]!;
+    expect(record.element.shadowHost).toBeUndefined();
+    upgraded.settings.shadowRoots = true;
+    record.element = {
+      ...record.element,
+      key: `test-id:plan-1 >> ${record.element.key}`,
+      shadowHost: "test-id:plan-1",
+    };
+    const reread = parseCaptureBundle(structuredClone(upgraded));
+    expect(reread.settings.shadowRoots).toBe(true);
+    expect(reread.scenarios[0]!.checkpoints[0]!.animations[0]!.element.shadowHost).toBe(
+      "test-id:plan-1",
+    );
+  });
+
   it("rejects captures newer than this version", () => {
     expect(() => parseCaptureBundle({ ...v1Capture, schemaVersion: 3 })).toThrow(
       /understands up to v2/,

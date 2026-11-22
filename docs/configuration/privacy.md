@@ -33,5 +33,10 @@ privacy: {
 },
 ```
 
+Masks are Playwright locators, so they reach into open shadow roots but not into closed ones: an
+input inside a closed shadow root is not masked. Add a selector for its host to
+`privacy.maskSelectors` to mask the whole component
+([Shadow DOM](../integrations/shadow-dom.md#limitations)).
+
 Captures and reports contain screenshots of your app. Treat them like any screenshot of your
 product: CI artifacts of a private repository are visible to everyone with read access to it.

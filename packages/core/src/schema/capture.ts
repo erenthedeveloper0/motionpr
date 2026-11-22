@@ -47,6 +47,12 @@ export const elementIdentitySchema = z.object({
   label: z.string().optional(),
   pseudoElement: z.string().optional(),
   anchor: z.string().optional(),
+  /**
+   * Key of the shadow host, for an element inside a shadow root. Its key and selector start with
+   * the host's (`test-id:plan-pro >> motionpr-id:glow`): it is identified within that root.
+   * Captures made before `0.5.0-alpha` identified such elements without their host.
+   */
+  shadowHost: z.string().optional(),
   warnings: z.array(z.string()),
 });
 export type ElementIdentity = z.infer<typeof elementIdentitySchema>;
@@ -392,9 +398,15 @@ export const adapterStatusSchema = z.object({
   versionStatus: z.enum(["supported", "untested", "unknown"]),
   /**
    * `active`: registered and reporting; `missing`: configured but never registered;
-   * `failed`: registered but threw while collecting.
+   * `failed`: registered but threw while collecting, or not registered because it declared an
+   * adapter protocol this MotionPR does not support (an `ADAPTER_PROTOCOL_UNSUPPORTED` error).
    */
   status: z.enum(["active", "missing", "failed"]),
+  /**
+   * The adapter protocol the adapter declared (1 when it declared none; null when it declared an
+   * unusable value). Absent for missing adapters and in captures made before `0.5.0-alpha`.
+   */
+  protocol: z.number().nullable().optional(),
   capabilities: z.array(z.string()),
   diagnostics: z.array(diagnosticSchema),
 });
@@ -494,6 +506,13 @@ export const captureSettingsSchema = z.object({
    * as `false`: a container scroll missing from them is not evidence that it did not move.
    */
   scrollContainers: z.boolean().default(false),
+  /**
+   * Whether MotionPR looked inside shadow roots: their animations and scroll containers were
+   * recorded and their elements identified through their hosts (always, since `0.5.0-alpha`).
+   * Older captures read as `false`: they missed CSS motion in shadow roots and identified the
+   * rest without its host, so a shadow-root record missing from them is not evidence.
+   */
+  shadowRoots: z.boolean().default(false),
 });
 
 export const captureBundleSchema = z.object({

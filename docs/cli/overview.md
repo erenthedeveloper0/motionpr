@@ -20,6 +20,7 @@ npx motionpr <command> [options]
 | [`report`](report.md)     | Open the most recent report, regenerating it if needed                                                       |
 | [`doctor`](doctor.md)     | Check Node.js, the browsers, the config, permissions and adapters                                            |
 | [`demo`](demo.md)         | Capture the bundled demo app in two versions and open a real report                                          |
+| [`adapter`](adapter.md)   | Check a custom adapter against adapter protocol 2 (`check`)                                                  |
 
 ## Global options
 
@@ -34,9 +35,10 @@ npx motionpr <command> [options]
 | `--no-color`          | Disable colours (also `NO_COLOR=1`; `FORCE_COLOR=1` forces them)                              |
 | `--ci`                | Non-interactive CI mode (also detected from `CI`, `GITHUB_ACTIONS`, `GITLAB_CI`, `BUILDKITE`) |
 
-`capture`, `compare`, `run`, `baseline accept`, `report`, `doctor` and `demo` also take
-`--browser <name>`: `chromium`, `firefox`, `webkit`, `all`, or a comma list (repeatable). Without
-it, the engine is `MOTIONPR_BROWSER` or the config's `browser.name`. See
+`capture`, `compare`, `run`, `baseline accept`, `report`, `doctor`, `demo` and `adapter check`
+also take `--browser <name>`: `chromium`, `firefox`, `webkit`, `all`, or a comma list
+(repeatable). Without it, the engine is `MOTIONPR_BROWSER` or the config's `browser.name`
+(Chromium for `adapter check`, which reads no config). See
 [Cross-browser testing](../browsers/cross-browser-testing.md).
 | `-v, --version` | Print the version |
 | `-h, --help` | Help for any command |
@@ -70,6 +72,7 @@ With `--json`, a command prints exactly one JSON document to stdout:
 | `capture`                      | `{ id, dir, browser, scenarios: [{ key, status, checkpoints, error }] }`; several engines: `{ captures: [ … ] }`                           |
 | `baseline status`              | `{ baseline, baselines: { chromium, firefox, webkit } }`                                                                                   |
 | `doctor`                       | `{ ok, checks: [{ name, status, detail, fix }] }`                                                                                          |
+| `adapter check`                | `{ page, url, browser, browserVersion, adapter, checks, passed, counts }`; several engines: `{ passed, reports: [ … ] }`                   |
 | errors                         | `{ error: { code, message, hint, issues } }`                                                                                               |
 
 ```bash

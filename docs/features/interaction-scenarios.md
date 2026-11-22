@@ -148,10 +148,11 @@ Every scenario runs once per viewport (`menu@mobile`), each in a fresh browser c
 
 ## Selectors
 
-Selectors are Playwright selectors (CSS, `text=…`, `role=…`). They must match **exactly one**
-element, otherwise the step fails with a _strict mode violation_. Prefer
-`[data-testid=…]` or `[data-motionpr-id=…]`: they make both the step and the
-[element identity](animation-identification.md) stable.
+Selectors are Playwright selectors (CSS, `text=…`, `role=…`), and they reach into open shadow
+roots ([Shadow DOM](../integrations/shadow-dom.md#steps)). They must match **exactly one**
+element, otherwise the step fails with a _strict mode violation_ (`scroll` and `scrollTo` take
+the first match). Prefer `[data-testid=…]` or `[data-motionpr-id=…]`: they make both the step and
+the [element identity](animation-identification.md) stable.
 
 ## Organising scenarios
 

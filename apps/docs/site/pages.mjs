@@ -269,7 +269,7 @@ export function landingBody({ up, version, summary, engines }) {
     </div>
     <figure class="terminal panel" data-component="terminal" aria-label="motionpr run output">
       <figcaption class="terminal__bar"><span class="label">npx motionpr run · real output, shortened</span></figcaption>
-<pre class="terminal__body"><code><span class="t-dim">◐ motionpr 0.4.0-alpha  ·  run</span>
+<pre class="terminal__body"><code><span class="t-dim">◐ motionpr 0.5.0-alpha  ·  run</span>
 
   <span class="t-dim">→</span> 1 scenario from motionpr.config.mjs
   <span class="t-dim">→</span> Web server ready at http://localhost:4173 (263 ms)
