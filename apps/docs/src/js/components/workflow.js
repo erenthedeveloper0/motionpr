@@ -257,13 +257,19 @@ export async function mount(el, ctx) {
       document.createTextNode("MotionPR · motion regression detected"),
     ),
   );
+  // Two lines: in one, the counts ran past the card's edge.
   report.append(
     s(
       "text",
-      { x: 96, y: 120, class: "wf-caption" },
+      { x: 96, y: 118, class: "wf-caption" },
       document.createTextNode(
-        `${sum.scenarios.total} scenarios · ${sum.animations.matched} matched · ${sum.animations.changed} changed · ${sum.animations.added} added · ${sum.animations.removed} removed`,
+        `${sum.scenarios.total} scenarios · ${sum.animations.matched} matched · ${sum.animations.changed} changed`,
       ),
+    ),
+    s(
+      "text",
+      { x: 96, y: 133, class: "wf-caption" },
+      document.createTextNode(`${sum.animations.added} added · ${sum.animations.removed} removed`),
     ),
   );
   const maxCount = Math.max(...counts.map((c) => c[1]));

@@ -242,6 +242,36 @@ describe("versions", () => {
     );
   });
 
+  it("names the current version wherever the docs, the website and the README state it", () => {
+    const version = (JSON.parse(read("packages/cli/package.json")) as { version: string }).version;
+    const files = [
+      ...markdownFiles("docs"),
+      "README.md",
+      "apps/docs/site/pages.mjs",
+      ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ];
+    // Each pattern captures a version that must be the current one: CLI output, the "is in
+    // alpha" status lines, the install docs, the doctor example, the issue template, the README.
+    const patterns = [
+      /◐ motionpr (\S+) {2}·/g,
+      /is in \**alpha\**(?: \(|\s+\()`([^`]+)`\)/g,
+      /prereleases \(`([^`]+)`\)/g,
+      /"name": "MotionPR", "status": "ok", "detail": "([^"]+)"/g,
+      /placeholder: "(\d[^"]*)"/g,
+      /\*\*Alpha — `([^`]+)`\.\*\*/g,
+    ];
+    const stale: string[] = [];
+    let found = 0;
+    for (const file of files)
+      for (const pattern of patterns)
+        for (const m of read(file).matchAll(pattern)) {
+          found++;
+          if (m[1] !== version) stale.push(`${file}: ${m[0]}`);
+        }
+    expect(found).toBeGreaterThan(10);
+    expect(stale).toEqual([]);
+  });
+
   it("publishes prereleases under a matching dist-tag, never latest", async () => {
     const { distTagFor, MOTIONPR_INSTALL_SPEC } =
       await import("../../packages/core/src/version.ts");

@@ -232,7 +232,7 @@ const ENGINES = [
     id: "css",
     label: "Native CSS",
     dataset: "navigation/open",
-    status: "No setup · recorded automatically · verified in Chromium",
+    status: "No setup · recorded automatically · verified in Chromium, Firefox and WebKit",
     docs: "docs/integrations/native-css/",
     code: '```css title="styles.css"\n.nav-panel {\n  transform: translateX(100%);\n  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);\n}\n.nav-open .nav-panel {\n  transform: translateX(0);\n}\n```',
   },

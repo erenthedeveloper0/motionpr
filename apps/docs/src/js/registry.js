@@ -119,7 +119,10 @@ function observer() {
         mountOne(e.target);
       }
     },
-    { rootMargin: "50% 0px" },
+    // Well ahead of the reader: a component grows when it mounts, and one that mounted in view
+    // pushed the next section's heading away (a fling or a fast wheel covers half a screen
+    // before a chunk arrives). Off screen, the growth is never seen.
+    { rootMargin: "150% 0px" },
   );
   return io;
 }
@@ -134,6 +137,20 @@ export function mountAll(root = document) {
       observer().observe(el);
     }
   }
+  prefetchPending();
+}
+
+/**
+ * Loads the code of the components still waiting, once the browser is idle, so they mount at
+ * once when the reader gets there. Loading only: nothing is mounted early. A failed load is
+ * retried (and handled) when the component mounts.
+ */
+function prefetchPending() {
+  const idle = window.requestIdleCallback ?? ((fn) => setTimeout(fn, 1200));
+  idle(() => {
+    for (const name of new Set([...pending].map((el) => el.dataset.component)))
+      LOADERS[name]?.().catch(() => undefined);
+  });
 }
 
 /**

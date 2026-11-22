@@ -319,7 +319,8 @@ test("unmounting a page leaves no animation running", async ({ page }) => {
 test("search finds a section and opens it", async ({ page }) => {
   await page.goto(`${BASE}docs/`);
   await page.keyboard.press("ControlOrMeta+k");
-  const input = page.getByRole("combobox");
+  // By name: the page it opens has other comboboxes (a timeline's playback speed).
+  const input = page.getByRole("combobox", { name: "Search" });
   await expect(input).toBeFocused();
   await input.fill("waitForScrollSettled");
   const first = page.locator(".search-results a").first();

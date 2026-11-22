@@ -133,20 +133,20 @@ export async function mount(el, ctx, name) {
       class: "tl-curve",
     });
     g.append(curve);
-    g.append(
-      s(
-        "text",
-        { x: x1 + 6, y: y + 17, class: "tl-dur" },
-        document.createTextNode(`${side.duration} ms`),
-      ),
-    );
     svg.append(g);
-    return { curve, x1 };
+    const dur = s(
+      "text",
+      { x: x1 + 6, y: y + 17, class: "tl-dur" },
+      document.createTextNode(`${side.duration} ms`),
+    );
+    return { curve, x1, dur };
   };
   const bb = bar(B, 24, BLUE, "Baseline");
   const bc = bar(C, 62, PEACH, "Candidate");
   const playhead = s("line", { x1: x(0), x2: x(0), y1: 18, y2: H - 6, class: "tl-playhead" });
-  svg.append(playhead);
+  // The durations sit where the playhead ends up (just past the longer bar): drawn after it, with
+  // a halo, the line passes behind them instead of striking them through.
+  svg.append(playhead, bb.dur, bc.dur);
 
   const readout = h("dl", { class: "instrument__readout" });
   const field = (label) => {
